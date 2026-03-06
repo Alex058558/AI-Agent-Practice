@@ -2,6 +2,8 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import WordCompleter, NestedCompleter, FuzzyWordCompleter, Completer, Completion
 
 # Load environment variables
 load_dotenv()
@@ -109,6 +111,216 @@ SYSTEM_PROMPT = (
 )
 
 # ============================================================
+# Slash Commands
+# ============================================================
+
+SLASH_COMMANDS = {
+    "/exit": {
+        "description": "Exit the program",
+        "usage": "/exit",
+    },
+    "/help": {
+        "description": "Show available commands",
+        "usage": "/help",
+    },
+    "/price": {
+        "description": "Quick stock price lookup",
+        "usage": "/price <symbol>",
+        "example": "/price AAPL",
+    },
+    "/rate": {
+        "description": "Quick exchange rate lookup",
+        "usage": "/rate <pair>",
+        "example": "/rate USD_TWD",
+    },
+    "/clear": {
+        "description": "Clear conversation memory",
+        "usage": "/clear",
+    },
+}
+
+# Valid options for autocomplete
+VALID_STOCKS = ["AAPL", "TSLA", "NVDA"]
+VALID_PAIRS = ["USD_TWD", "JPY_TWD", "EUR_USD"]
+
+# ============================================================
+# Slash Command Handlers
+# ============================================================
+
+def handle_exit():
+    """Handle /exit command."""
+    print("\nAssistant: Goodbye! Have a great day!")
+    return "exit"
+
+
+def handle_help():
+    """Handle /help command - display available commands."""
+    print("\n[Available Commands]")
+    print("-" * 40)
+    for cmd, info in SLASH_COMMANDS.items():
+        print(f"  {cmd:10} - {info['description']}")
+    print("-" * 40)
+    print("\nYou can also chat naturally with me about:")
+    print("  - Stock prices (AAPL, TSLA, NVDA)")
+    print("  - Exchange rates (USD_TWD, JPY_TWD, EUR_USD)")
+    return "continue"
+
+
+def handle_price(symbol: str) -> str:
+    """Handle /price command - quick stock lookup."""
+    if not symbol:
+        print("\n[Error] Please provide a symbol. Usage: /price <symbol>")
+        print("  Example: /price AAPL")
+        return "continue"
+
+    result = get_stock_price(symbol.upper())
+    data = json.loads(result)
+
+    if "error" in data:
+        print(f"\n[Error] {data['error']}")
+        print(f"  Valid symbols: {', '.join(VALID_STOCKS)}")
+    else:
+        print(f"\n[Stock Price] {data['symbol']}: ${data['price']}")
+    return "continue"
+
+
+def handle_rate(pair: str) -> str:
+    """Handle /rate command - quick exchange rate lookup."""
+    if not pair:
+        print("\n[Error] Please provide a currency pair. Usage: /rate <pair>")
+        print("  Example: /rate USD_TWD")
+        return "continue"
+
+    result = get_exchange_rate(pair.upper())
+    data = json.loads(result)
+
+    if "error" in data:
+        print(f"\n[Error] {data['error']}")
+        print(f"  Valid pairs: {', '.join(VALID_PAIRS)}")
+    else:
+        print(f"\n[Exchange Rate] {data['currency_pair']}: {data['rate']}")
+    return "continue"
+
+
+def handle_clear(messages: list) -> tuple:
+    """Handle /clear command - reset conversation memory."""
+    messages.clear()
+    messages.append({"role": "system", "content": SYSTEM_PROMPT})
+    print("\n[System] Conversation memory cleared.")
+    return "continue", messages
+
+
+# ============================================================
+# Autocomplete Completer
+# ============================================================
+
+class SlashCommandCompleter(Completer):
+    """
+    Custom completer for slash commands with fuzzy matching.
+    Shows matching commands even with partial input like /cl -> /clear.
+    """
+
+    def __init__(self):
+        self.commands = {
+            "/exit": None,
+            "/help": None,
+            "/price": WordCompleter(VALID_STOCKS, meta_dict={
+                "AAPL": "Apple Inc.",
+                "TSLA": "Tesla Inc.",
+                "NVDA": "NVIDIA Corp.",
+            }),
+            "/rate": WordCompleter(VALID_PAIRS, meta_dict={
+                "USD_TWD": "US Dollar to Taiwan Dollar",
+                "JPY_TWD": "Japanese Yen to Taiwan Dollar",
+                "EUR_USD": "Euro to US Dollar",
+            }),
+            "/clear": None,
+        }
+        self.command_list = list(self.commands.keys())
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor.lstrip()
+
+        # Only show completions when input starts with /
+        if not text.startswith("/"):
+            return
+
+        # Check if we're typing a command with argument (e.g., "/price ")
+        parts = text.split(maxsplit=1)
+        if len(parts) == 2 or (len(parts) == 1 and text.endswith(" ")):
+            # We have a command, delegate to its completer for arguments
+            command = parts[0].lower()
+            if command in self.commands:
+                sub_completer = self.commands[command]
+                if sub_completer:
+                    yield from sub_completer.get_completions(document, complete_event)
+            return
+
+        # Filter commands that match the current input (fuzzy prefix match)
+        for cmd in self.command_list:
+            if cmd.startswith(text) or text in cmd:
+                # Calculate display position
+                yield Completion(
+                    cmd,
+                    start_position=-len(text),
+                    display=cmd,
+                )
+
+
+def build_completer():
+    """Build custom completer for slash commands with fuzzy matching."""
+    return SlashCommandCompleter()
+
+
+# ============================================================
+# Command Parser
+# ============================================================
+
+def parse_and_execute_command(user_input: str, messages: list) -> tuple:
+    """
+    Parse slash commands and execute them.
+
+    Returns:
+        tuple: (action, messages)
+        - action: "exit" | "continue" | "chat"
+        - messages: updated messages list
+    """
+    stripped = user_input.strip()
+
+    # Check for legacy exit commands (backward compatibility)
+    if stripped.lower() in ("exit", "quit", "bye"):
+        return handle_exit(), messages
+
+    # Not a slash command, send to LLM
+    if not stripped.startswith("/"):
+        return "chat", messages
+
+    parts = stripped.split(maxsplit=1)
+    command = parts[0].lower()
+    argument = parts[1] if len(parts) > 1 else ""
+
+    # Check if command exists
+    if command not in SLASH_COMMANDS:
+        print(f"\n[Error] Unknown command: {command}")
+        print("  Type /help for available commands.")
+        return "continue", messages
+
+    # Handle each command
+    if command == "/exit":
+        return handle_exit(), messages
+    elif command == "/help":
+        return handle_help(), messages
+    elif command == "/price":
+        return handle_price(argument), messages
+    elif command == "/rate":
+        return handle_rate(argument), messages
+    elif command == "/clear":
+        return handle_clear(messages)
+
+    return "continue", messages
+
+
+# ============================================================
 # Agent Loop
 # ============================================================
 
@@ -116,18 +328,41 @@ def run_agent():
     """Main agent loop with conversation memory and parallel tool call support."""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+    # Initialize slash command completer
+    completer = build_completer()
+
     print("=" * 50)
-    print("  Financial Assistant (type 'exit' to quit)")
+    print("  Financial Assistant")
+    print("  Type '/' for commands, '/help' for help")
     print("=" * 50)
 
     while True:
-        user_input = input("\nYou: ").strip()
-        if not user_input:
-            continue
-        if user_input.lower() in ("exit", "quit", "bye"):
-            print("\nAssistant: Goodbye! Have a great day!")
+        try:
+            # Use prompt_toolkit for input with autocomplete
+            user_input = prompt(
+                "\nYou: ",
+                completer=completer,
+                complete_while_typing=True,
+            ).strip()
+        except KeyboardInterrupt:
+            print("\n\nAssistant: Goodbye! Have a great day!")
+            break
+        except EOFError:
+            print("\n\nAssistant: Goodbye! Have a great day!")
             break
 
+        if not user_input:
+            continue
+
+        # Parse and execute slash commands
+        action, messages = parse_and_execute_command(user_input, messages)
+
+        if action == "exit":
+            break
+        elif action == "continue":
+            continue
+
+        # If not a slash command, process through LLM
         messages.append({"role": "user", "content": user_input})
 
         # Call the LLM
@@ -141,7 +376,7 @@ def run_agent():
 
         # Handle tool calls (including parallel calls)
         while response_message.tool_calls:
-            print(f"\n[Debug] Model requested {len(response_message.tool_calls)} tool call(s):")
+            print(f"\n[Tool] Model requested {len(response_message.tool_calls)} tool call(s):")
 
             for tool_call in response_message.tool_calls:
                 func_name = tool_call.function.name
