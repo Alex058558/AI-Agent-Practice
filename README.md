@@ -183,6 +183,39 @@ Assignment 1/
 
 ## 技術實現
 
+### Data Flow Architecture
+
+```
+                              ┌─────────────────┐
+                              │   tools (JSON)  │
+                              │  Tool Schemas   │
+                              └────────┬────────┘
+                                       │
+                                       │ LLM reads tool definitions
+                                       ▼
+┌──────────────┐      ┌─────────────────────────────┐      ┌──────────────┐
+│   messages   │◄──── │        Agent Loop           │────► │  LLM API     │
+│ Chat History │      │       (Main Loop)           │      │  OpenRouter  │
+└──────────────┘      └───────────────┬─────────────┘      └──────────────┘
+                                      │
+                                      │ Tool call requests
+                                      ▼
+                         ┌─────────────────────────┐
+                         │    available_functions  │
+                         │    (Function Registry)  │
+                         └────────────┬────────────┘
+                                      │
+                                      │ Execute function
+                                      ▼
+                    ┌─────────────────────────────────────┐
+                    │         Mock Data Functions         │
+                    │  ┌───────────────────────────────┐  │
+                    │  │     get_stock_price()         │  │
+                    │  │     get_exchange_rate()       │  │
+                    │  └───────────────────────────────┘  │
+                    └─────────────────────────────────────┘
+```
+
 ### Function Map (字典派發)
 
 使用 Python Dictionary 進行工具路由，避免 if-else 鏈：
