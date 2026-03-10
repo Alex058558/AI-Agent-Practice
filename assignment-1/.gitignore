@@ -45,6 +45,3 @@ env/
 # OS
 .DS_Store
 Thumbs.db
-
-# Plan files
-.plan/
