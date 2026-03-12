@@ -26,7 +26,7 @@
 
 ```bash
 git clone <your-repo-url>
-cd "Assignment 1"
+cd "assigment-1"
 ```
 
 ### 2. 建立虛擬環境 (建議)
@@ -81,13 +81,13 @@ You:
 
 輸入 `/` 後按 Tab 可顯示可用指令選單：
 
-| 指令 | 功能 | 範例 |
-|------|------|------|
-| `/exit` | 退出程式 | `/exit` |
-| `/help` | 顯示幫助說明 | `/help` |
-| `/price <symbol>` | 快速查股價 | `/price AAPL` |
-| `/rate <pair>` | 快速查匯率 | `/rate USD_TWD` |
-| `/clear` | 清除對話記憶 | `/clear` |
+| 指令              | 功能         | 範例            |
+|-------------------|--------------|-----------------|
+| `/exit`           | 退出程式     | `/exit`         |
+| `/help`           | 顯示幫助說明 | `/help`         |
+| `/price <symbol>` | 快速查股價   | `/price AAPL`   |
+| `/rate <pair>`    | 快速查匯率   | `/rate USD_TWD` |
+| `/clear`          | 清除對話記憶 | `/clear`        |
 
 也可使用自然語言對話，或輸入 `exit`、`quit`、`bye` 退出程式。
 
@@ -153,19 +153,19 @@ You: What is the price of GOOG?
 
 ### 匯率 (Exchange Rates)
 
-| 貨幣對 | 匯率 |
-|--------|------|
+| 貨幣對  | 匯率 |
+|---------|------|
 | USD_TWD | 32.0 |
-| JPY_TWD | 0.2 |
-| EUR_USD | 1.2 |
+| JPY_TWD | 0.2  |
+| EUR_USD | 1.2  |
 
 ### 股票價格 (Stock Prices)
 
-| 股票代碼 | 價格 |
-|----------|------|
-| AAPL | 260.00 |
-| TSLA | 430.00 |
-| NVDA | 190.00 |
+| 股票代碼 | 價格   |
+|----------|--------|
+| AAPL     | 260.00 |
+| TSLA     | 430.00 |
+| NVDA     | 190.00 |
 
 ## 專案結構
 

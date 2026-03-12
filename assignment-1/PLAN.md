@@ -9,7 +9,7 @@ Build a CLI chatbot "Financial Assistant" using raw Python + OpenAI Function Cal
 ## Project Structure
 
 ```
-Assignment 1/
+assigment-1/
 ├── main.py              # Main chatbot code
 ├── .env                 # API key (gitignored)
 ├── .env.example         # Template for .env (safe to commit)
@@ -82,19 +82,19 @@ Print tool call info (function name, arguments) so demo video can show parallel 
 
 ## Verification (Demo Tasks)
 
-| Task | Input | Expected |
-|------|-------|----------|
-| A | "Who are you?" | Responds as Financial Assistant |
-| B | "What is the price of NVDA?" | 190.00 |
-| C | "Compare the stock prices of AAPL and TSLA." | 2 tool calls in 1 turn, 260.00 vs 430.00 |
-| D | "My name is Hina" then "What is my name?" | Recalls "Hina" |
-| E | "What is the price of GOOG?" | Graceful "Data not found" |
+| Task | Input                                        | Expected                                 |
+|------|----------------------------------------------|------------------------------------------|
+| A    | "Who are you?"                               | Responds as Financial Assistant          |
+| B    | "What is the price of NVDA?"                 | 190.00                                   |
+| C    | "Compare the stock prices of AAPL and TSLA." | 2 tool calls in 1 turn, 260.00 vs 430.00 |
+| D    | "My name is Hina" then "What is my name?"    | Recalls "Hina"                           |
+| E    | "What is the price of GOOG?"                 | Graceful "Data not found"                |
 
 ---
 
 ## Files to Create/Modify
 
-- `Assignment 1/main.py` (new) - All chatbot logic
-- `Assignment 1/requirements.txt` (new)
-- `Assignment 1/.env.example` (new)
-- `Assignment 1/.gitignore` (new)
+- `assigment-1/main.py` (new) - All chatbot logic
+- `assigment-1/requirements.txt` (new)
+- `assigment-1/.env.example` (new)
+- `assigment-1/.gitignore` (new)
