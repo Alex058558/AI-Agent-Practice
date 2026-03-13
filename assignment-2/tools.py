@@ -1,6 +1,7 @@
 import ast
 import operator
 import os
+from urllib.parse import urlparse
 
 from tavily import TavilyClient
 
@@ -43,25 +44,39 @@ def calculate(expression: str) -> str:
         return f"Error: {e}"
 
 
+def _extract_domain(url: str) -> str:
+    netloc = urlparse(url).netloc.lower()
+    return netloc.removeprefix("www.") if netloc else "unknown"
+
+
 def search(query: str) -> str:
     """Search the web using Tavily API."""
     try:
         response = tavily_client.search(
             query=query,
-            search_depth="basic",
-            max_results=3,
+            search_depth="advanced",
+            max_results=5,
             include_answer=True,
         )
 
         parts = []
-        if response.get("answer"):
-            parts.append(f"Summary: {response['answer']}")
-
         for i, result in enumerate(response.get("results", []), 1):
             title = result.get("title", "")
             url = result.get("url", "")
             content = result.get("content", "")
-            parts.append(f"\n[{i}] {title}\n    URL: {url}\n    {content}")
+            domain = _extract_domain(url)
+            parts.append(
+                f"[{i}] {title}\n"
+                f"    Domain: {domain}\n"
+                f"    URL: {url}\n"
+                f"    Snippet: {content}"
+            )
+
+        if response.get("answer"):
+            parts.append(
+                "\nSearch summary (unverified hint; prefer the source snippets above if they conflict): "
+                f"{response['answer']}"
+            )
 
         return "\n".join(parts) if parts else "No results found."
     except Exception as e:
