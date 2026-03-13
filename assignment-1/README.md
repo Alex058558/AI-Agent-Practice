@@ -175,7 +175,6 @@ Assignment 1/
 ├── requirements.txt  # 相依套件
 ├── .env.example      # 環境變數範例
 ├── .env              # 環境變數 (不上傳)
-├── .gitignore        # Git 忽略檔案
 ├── README.md         # 說明文件
 ├── PLAN.md           # 開發計畫
 └── REQUIREMENTS.md   # 作業需求

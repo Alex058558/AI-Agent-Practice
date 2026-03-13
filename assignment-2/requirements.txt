@@ -1,0 +1,4 @@
+openai
+python-dotenv
+tavily-python
+prompt_toolkit>=3.0.0

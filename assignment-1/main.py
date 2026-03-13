@@ -1,12 +1,11 @@
 import os
 import json
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from openai import OpenAI
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter, NestedCompleter, FuzzyWordCompleter, Completer, Completion
 
-# Load environment variables
-load_dotenv()
+load_dotenv(find_dotenv())
 
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),

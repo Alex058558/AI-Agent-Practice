@@ -11,9 +11,8 @@ Build a CLI chatbot "Financial Assistant" using raw Python + OpenAI Function Cal
 ```
 assigment-1/
 ├── main.py              # Main chatbot code
-├── .env                 # API key (gitignored)
+├── .env                 # API key (ignored by the repo-level .gitignore)
 ├── .env.example         # Template for .env (safe to commit)
-├── .gitignore           # Exclude .env
 └── requirements.txt     # Dependencies
 ```
 
@@ -26,7 +25,7 @@ assigment-1/
 Create the following files:
 - **`requirements.txt`**: `openai`, `python-dotenv`
 - **`.env.example`**: Template with `OPENAI_API_KEY=your-key-here`
-- **`.gitignore`**: Exclude `.env`
+- **repo-level `.gitignore` rule**: Exclude `.env`
 
 ### Step 2: Implement mock data functions in `main.py`
 
@@ -97,4 +96,3 @@ Print tool call info (function name, arguments) so demo video can show parallel 
 - `assigment-1/main.py` (new) - All chatbot logic
 - `assigment-1/requirements.txt` (new)
 - `assigment-1/.env.example` (new)
-- `assigment-1/.gitignore` (new)
