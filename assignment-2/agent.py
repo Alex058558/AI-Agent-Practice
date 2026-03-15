@@ -40,9 +40,8 @@ IMPORTANT:
 - Only assert a fact if you can point to a specific snippet from the Observations that states it. If no snippet explicitly supports a claim, treat it as unverified.
 - If a search returns poor, conflicting, or off-topic results, reflect on why and try a DIFFERENT query angle.
 - When different search results appear to refer to different entities with the same name, list the distinct entities and refine your query with neutral qualifiers (industry, product type, headquarters, or domain) before answering.
-- AVOID CONFIRMATION BIAS: When following up on ambiguous results, do NOT embed a candidate answer (e.g., a person's name you saw) into your query. This biases the search engine toward confirming that candidate. Instead, add neutral contextual filters like the product category or industry.
-  Bad:  Action: search[Morphic CEO John Doe]  (embeds a candidate name — biased)
-  Good: Action: search[Morphic AI search engine founder]  (uses neutral product descriptors)
+- When following up on a lead (e.g., a person's name or URL found in results), you MAY use it in a targeted verification query. This is legitimate investigation, not confirmation bias.
+- AVOID CONFIRMATION BIAS: Do not assume a candidate answer is correct just because one source mentions it. Always check whether the source refers to the SAME entity the question asks about.
 - If ambiguity remains after a reasonable retry, give an Answer that says the evidence is inconclusive and briefly list the conflicting entities you found, instead of guessing.
 - Break complex questions into sub-questions and solve them step by step.
 
@@ -346,6 +345,27 @@ class ReActAgent:
 
     def _review_draft(self, question: str, messages, draft_answer: str) -> dict:
         trace = self._build_trace(messages)
+
+        obs_count = sum(
+            1 for m in messages
+            if m["role"] == "user" and m["content"].startswith("Observation:")
+        )
+        if obs_count < 2:
+            followup = self._suggest_followup_query(question, trace)
+            self.on_step(
+                "thought",
+                f"Thought: Structural guard — only {obs_count} observation(s); "
+                "forcing additional search before accepting.",
+            )
+            return {
+                "decision": "revise",
+                "reason": (
+                    f"Only {obs_count} observation(s) collected so far. "
+                    "Need at least 2 before the draft can be accepted."
+                ),
+                "next_query": followup,
+            }
+
         review_messages = [
             {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
             {
@@ -393,6 +413,35 @@ class ReActAgent:
             "reason": reason or "The draft answer is not sufficiently supported.",
             "next_query": next_query,
         }
+
+    def _suggest_followup_query(self, question: str, trace: str) -> str:
+        prompt = (
+            "Given the original question and the ReAct trace so far, "
+            "suggest ONE short, targeted follow-up search query that would "
+            "gather additional evidence to verify or refute the current findings. "
+            "Do NOT embed any candidate answer or person name in the query. "
+            "Use neutral descriptors (product type, industry, domain). "
+            "Return ONLY the query string, nothing else."
+        )
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {
+                        "role": "user",
+                        "content": f"Question: {question}\n\nTrace:\n{trace}",
+                    },
+                ],
+                temperature=0.3,
+                max_tokens=60,
+            )
+            query = (response.choices[0].message.content or "").strip().strip('"\'')
+            if query:
+                return query
+        except Exception:
+            pass
+        return f"{question} site:wikipedia.org OR site:crunchbase.com"
 
     def _parse_finalize_payload(self, raw: str) -> Optional[dict]:
         if not raw:
