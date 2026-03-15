@@ -7,6 +7,7 @@ from tavily import TavilyClient
 
 
 tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+MAX_SNIPPET_CHARS = 500
 
 ALLOWED_OPERATORS = {
     ast.Add: operator.add,
@@ -49,6 +50,13 @@ def _extract_domain(url: str) -> str:
     return netloc.removeprefix("www.") if netloc else "unknown"
 
 
+def _clean_snippet(content: str) -> str:
+    normalized = " ".join(content.split())
+    if len(normalized) <= MAX_SNIPPET_CHARS:
+        return normalized
+    return normalized[:MAX_SNIPPET_CHARS].rstrip() + "..."
+
+
 def search(query: str) -> str:
     """Search the web using Tavily API."""
     try:
@@ -63,13 +71,14 @@ def search(query: str) -> str:
         for i, result in enumerate(response.get("results", []), 1):
             title = result.get("title", "")
             url = result.get("url", "")
-            content = result.get("content", "")
+            content = _clean_snippet(result.get("content", ""))
             domain = _extract_domain(url)
             parts.append(
-                f"[{i}] {title}\n"
-                f"    Domain: {domain}\n"
-                f"    URL: {url}\n"
-                f"    Snippet: {content}"
+                f"[{i}] RESULT\n"
+                f"Title: {title}\n"
+                f"Domain: {domain}\n"
+                f"URL: {url}\n"
+                f"Snippet: {content}"
             )
 
         if response.get("answer"):
