@@ -54,14 +54,13 @@ Agent 使用三組獨立的 System Prompt，各司其職：
 
 **2. 格式約束**：嚴格定義每步輸出只能是「Thought + Action + PAUSE」或「Answer」二擇一，避免 LLM 自由發揮導致 parse 失敗。
 
-**3. Few-Shot Example**：嵌入一個完整的 ReAct 範例（日本與法國人口比例），展示：
+**3. Few-Shot Examples（3-shot）**：嵌入三個完整的 ReAct 範例，分別展示不同能力：
 
-- 問題拆解（decomposition）：先搜日本人口，再搜法國人口
-- 工具串接：搜尋結果送入 calculate 計算比例
-- Observation 格式：包含 Domain、URL、Snippet 結構化欄位，與 search summary 標記為 unverified hint
-- 格式遵守：每個 Action 後接 PAUSE，最後用 Answer 結尾
+- **Example 1: Task Decomposition**（日本與法國人口比例）-- 展示問題拆解：先搜日本人口，再搜法國人口，最後計算比例。同時展示工具串接（搜尋結果送入 calculate）與格式遵守。
+- **Example 2: Reflection After Poor Results**（Instagram 早期技術棧）-- 展示搜尋結果不理想時如何反思並調整查詢。第一次搜尋只找到「目前」的技術棧，模型主動識別問題並改用更精確的查詢找到「第一版」的資訊。
+- **Example 3: Ambiguity Handling**（Notion CEO）-- 展示同名實體消歧義。搜尋結果顯示多個名為 "Notion" 的公司（生產力工具 vs AI 研究公司），模型嘗試區分後正確報告歧義。
 
-Few-Shot 範例的有效性在於：它與 Task 1（日本 vs 台灣人口）結構高度相似，LLM 能直接遷移此 decomposition pattern。同時，範例中的 Observation 格式與實際搜尋結果格式一致，減少格式適應成本。
+Few-Shot 範例的有效性在於：Example 1 與 Task 1（日本 vs 台灣人口）結構高度相似，LLM 能直接遷移 decomposition pattern；Example 2 為 Task 3 的 Reflection 能力提供示範；Example 3 展示了 entity disambiguation 的正確處理方式。同時，範例中的 Observation 格式與實際搜尋結果格式一致，減少格式適應成本。
 
 **4. Source-First Observation**：搜尋結果格式經過設計，每筆結果包含 Domain / URL / Snippet 三欄，讓 LLM 能根據來源可信度判斷資訊品質。Tavily 的 AI summary 被標記為 `unverified hint`，引導 LLM 優先信任原始 snippet。
 
@@ -144,38 +143,29 @@ Format rules:
 IMPORTANT:
 - When you have enough information to answer, you MUST start
   your response with "Answer:" on its own line. Do NOT output
-  your conclusion without the "Answer:" prefix -- the system
-  cannot parse it otherwise.
+  your conclusion without the "Answer:" prefix.
 - After writing an Action line, you MUST write PAUSE and stop.
   Do NOT write Observation yourself.
 - The system will provide the Observation after your PAUSE.
 - Treat search summaries as hints, not as verified facts.
   Prefer source titles, domains, and snippets.
 - Only assert a fact if you can point to a specific snippet
-  from the Observations that states it. If no snippet
-  explicitly supports a claim, treat it as unverified.
+  from the Observations that states it.
 - If a search returns poor, conflicting, or off-topic results,
   reflect on why and try a DIFFERENT query angle.
 - When different search results appear to refer to different
   entities with the same name, list the distinct entities
   and refine your query with neutral qualifiers (industry,
   product type, headquarters, or domain) before answering.
-- When following up on a lead (e.g., a person's name or URL
-  found in results), you MAY use it in a targeted verification
-  query. This is legitimate investigation, not confirmation
-  bias.
-  Example: search["morphic.sh" "Yoshiki Miura"]
 - AVOID CONFIRMATION BIAS: Do not assume a candidate answer
-  is correct just because one source mentions it. Always check
-  whether the source refers to the SAME entity the question
-  asks about.
+  is correct just because one source mentions it.
 - If ambiguity remains after a reasonable retry, give an
-  Answer that says the evidence is inconclusive and briefly
-  list the conflicting entities you found, instead of guessing.
+  Answer that says the evidence is inconclusive.
 - Break complex questions into sub-questions and solve them
   step by step.
 
-Example session:
+=== EXAMPLE 1: Task Decomposition ===
+
 Question: What is the population ratio of Japan to France?
 Thought: I need to find the populations of both Japan and
 France. Let me start with Japan.
@@ -186,23 +176,93 @@ Observation:
 [1] RESULT
 Title: Japan Demographics
 Domain: example.com
-URL: https://example.com/japan
 Snippet: Japan's population was estimated at 123.3 million
-in 2024, continuing a declining trend.
+in 2024...
 
-Search summary (unverified hint; prefer the source snippets
-above if they conflict): Japan's population is approximately
-123.3 million as of 2024.
-
-Thought: Japan's population is about 123.3 million. Now I need
-France's population.
+Thought: Japan's population is about 123.3 million.
+Now I need France's population.
 Action: search[France population 2024]
 PAUSE
 
-[...observation, calculate, final answer...]
+[...observation...]
 
+Thought: Now I can calculate the ratio.
+Action: calculate[123.3 / 68.4]
+PAUSE
+
+Observation: 1.8026315789473686
+
+Thought: The ratio is approximately 1.80.
 Answer: The population ratio of Japan to France is
 approximately 1.80:1.
+
+=== EXAMPLE 2: Reflection After Poor Results ===
+
+Question: What programming language was used to build the
+first version of Instagram?
+Thought: I need to find information about Instagram's tech
+stack in its early days.
+Action: search[Instagram programming language]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Instagram Engineering Blog
+Snippet: Instagram now uses Python, Django, and various
+other technologies...
+
+Thought: The search results show Instagram's current tech
+stack, but the question asks about the FIRST version.
+Let me try a more specific query.
+Action: search[Instagram first version original tech stack 2010]
+PAUSE
+
+[...observation showing first version was Python/Django...]
+
+Thought: Now I have the specific information about the
+first version.
+Answer: The first version of Instagram, launched in 2010,
+was built using Python with the Django framework.
+
+=== EXAMPLE 3: Ambiguity Handling ===
+
+Question: Who is the CEO of Notion?
+Thought: I need to find Notion's CEO.
+Action: search[Notion CEO]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Notion - The all-in-one workspace
+Domain: notion.so
+Snippet: Notion is a productivity and note-taking app.
+Founded by Ivan Zhao and Simon Last.
+
+[2] RESULT
+Title: Notion AI - Research Lab
+Domain: notion.ai
+Snippet: Notion AI is an artificial intelligence research
+company based in San Francisco...
+
+Thought: I found two different companies named "Notion":
+notion.so (productivity workspace) and notion.ai (AI
+research company). I need to clarify and search more
+specifically.
+Action: search[Notion workspace productivity app notion.so CEO]
+PAUSE
+
+[...observation confirming Ivan Zhao for notion.so...]
+
+Thought: I have identified two distinct entities with the
+name "Notion". Since the question doesn't specify, I should
+report this ambiguity.
+Answer: There are multiple companies named "Notion". If you
+mean Notion (notion.so), the productivity workspace, the CEO
+is Ivan Zhao. If you mean Notion AI (notion.ai), an AI
+research company, the leadership differs. Please specify
+which company you are referring to.
+
+=== END EXAMPLES ===
 ```
 
 ### Python 如何將 Observation 回饋至 LLM context window
@@ -336,40 +396,44 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
 \begin{Verbatim}[fontsize=\small, frame=single, framesep=2mm, commandchars=\\\{\}]
 \textcolor{step}{--- Step 1/5 ---}
   \textcolor{thought}{Thought: I need to find the populations of both Japan and}
-  \textcolor{thought}{Taiwan for the year 2025. I'll start with Japan's population.}
+  \textcolor{thought}{Taiwan for the year 2025. I'll start by searching for}
+  \textcolor{thought}{Japan's population in 2025.}
   \textcolor{action}{Action: search[Japan population 2025]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Japan Population 2025 - UNFPA}
-  \textcolor{obs}{      Domain: unfpa.org}
-  \textcolor{obs}{      Snippet: Total Population (2025): 123,100,000}
-  \textcolor{obs}{  [2] Japan Population, 1899-2025}
-  \textcolor{obs}{      Domain: ceicdata.com}
+  \textcolor{obs}{  [1] Japan Population (1950-2025) - Macrotrends}
+  \textcolor{obs}{      Domain: macrotrends.net}
+  \textcolor{obs}{      Snippet: Total current population for Japan in 2025}
+  \textcolor{obs}{      was 121,960,408, a 0.55\% decline from 2024.}
+  \textcolor{obs}{  [2] Demographics of Japan - Wikipedia}
+  \textcolor{obs}{      Domain: en.wikipedia.org}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 2/5 ---}
-  \textcolor{thought}{Thought: Japan's population in 2025 is approximately 123}
-  \textcolor{thought}{million. Now, I need to find Taiwan's population for the}
-  \textcolor{thought}{same year.}
+  \textcolor{thought}{Thought: Japan's population in 2025 is approximately}
+  \textcolor{thought}{123.1 million. Now, I need to find Taiwan's population}
+  \textcolor{thought}{for the same year.}
   \textcolor{action}{Action: search[Taiwan population 2025]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Taiwan Population, 1950-2025 - CEIC Data}
-  \textcolor{obs}{      Domain: ceicdata.com}
-  \textcolor{obs}{  [2] Taiwan Population - Trading Economics}
+  \textcolor{obs}{  [1] Taiwan Population - Trading Economics}
   \textcolor{obs}{      Domain: tradingeconomics.com}
+  \textcolor{obs}{      Snippet: The total population in Taiwan was estimated}
+  \textcolor{obs}{      at 23.3 million people in 2025.}
+  \textcolor{obs}{  [2] Taiwan Population (2026) - Worldometer}
+  \textcolor{obs}{      Domain: worldometers.info}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 3/5 ---}
-  \textcolor{thought}{Thought: Japan's population is approximately 123 million,}
-  \textcolor{thought}{and Taiwan's population is about 23.3 million.}
-  \textcolor{action}{Action: calculate[23.3 / 123]}
-  \textcolor{obs}{Observation: 0.18943089430894308}
+  \textcolor{thought}{Thought: Taiwan's population in 2025 is approximately}
+  \textcolor{thought}{23.3 million. Now I can calculate the fraction of Japan's}
+  \textcolor{thought}{population that Taiwan's population represents.}
+  \textcolor{action}{Action: calculate[23.3 / 123.1]}
+  \textcolor{obs}{Observation: 0.1892770105605199}
 
 \textcolor{step}{--- Step 4/5 ---}
   \textcolor{thought}{Thought: Draft answer passed evidence review.}
 
   \textcolor{answer}{Answer: The fraction of Japan's population that is Taiwan's}
-  \textcolor{answer}{population as of 2025 is approximately 0.189, or about}
-  \textcolor{answer}{18.9\%.}
+  \textcolor{answer}{population as of 2025 is approximately 0.189, or about 18.9\%.}
 \end{Verbatim}
 ```
 
@@ -377,7 +441,7 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
 
 - **Decomposition**：Agent 正確將問題拆解為三個子任務 -- 搜尋日本人口、搜尋台灣人口、計算比例。
 - **Tool Chaining**：搜尋結果成功傳遞給 calculate 工具，展現跨工具協作能力。
-- **Few-Shot 效果**：Task 1 的結構與 System Prompt 中的 Few-Shot 範例（日本 vs 法國）高度相似，LLM 完美複製了這個 decomposition pattern。
+- **Few-Shot 效果**：Task 1 的結構與 System Prompt 中 Example 1（日本 vs 法國）高度相似，LLM 完美複製了這個 decomposition pattern。
 - **Review Gate**：draft answer 直接通過 review（observation >= 2、無歧義、data grounded）。
 - **步數**：4 步完成（2 次搜尋 + 1 次計算 + 1 次 answer），效率合理。
 
@@ -396,51 +460,53 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
   \textcolor{thought}{the iPhone 15 and the Samsung S24. I'll start with iPhone 15.}
   \textcolor{action}{Action: search[iPhone 15 display specifications]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] iPhone 15 Pro Max - Tech Specs}
+  \textcolor{obs}{  [1] iPhone 15 Pro - Tech Specs - Apple Support}
   \textcolor{obs}{      Domain: support.apple.com}
-  \textcolor{obs}{      Snippet: Super Retina XDR OLED 6.7" 2796x1290 460ppi}
-  \textcolor{obs}{      ProMotion 120Hz, HDR, 2000 nits peak brightness}
+  \textcolor{obs}{      Snippet: Super Retina XDR display 6.1-inch OLED}
+  \textcolor{obs}{      2556-by-1179-pixel resolution at 460 ppi}
+  \textcolor{obs}{      Dynamic Island, ProMotion 120Hz, HDR, 2000 nits}
   \textcolor{obs}{  [2] iPhone 15 - Wikipedia}
   \textcolor{obs}{      Domain: en.wikipedia.org}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 2/5 ---}
-  \textcolor{thought}{Thought: I have the display specifications for the iPhone 15.}
-  \textcolor{thought}{Now, I need to find the display specs for Samsung S24.}
+  \textcolor{thought}{Thought: I have gathered the display specifications for}
+  \textcolor{thought}{the iPhone 15. Now, I need to find the display specs for}
+  \textcolor{thought}{Samsung S24.}
   \textcolor{action}{Action: search[Samsung S24 display specifications]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Galaxy S24 | Samsung Mobile Press}
-  \textcolor{obs}{      Domain: samsungmobilepress.com}
-  \textcolor{obs}{      Snippet: 6.2" FHD+ Dynamic AMOLED 2X, Super Smooth}
-  \textcolor{obs}{      120Hz refresh rate (1\~{}120Hz), Vision booster}
-  \textcolor{obs}{  [2] Samsung Galaxy S24 - GSMArena}
-  \textcolor{obs}{      Domain: gsmarena.com}
+  \textcolor{obs}{  [1] Samsung Galaxy S24 Specifications}
+  \textcolor{obs}{      Domain: cuit.columbia.edu}
+  \textcolor{obs}{      Snippet: 6.2" FHD+ Dynamic AMOLED 2X, 120Hz}
+  \textcolor{obs}{      Gorilla Glass Victus 2, IP68}
+  \textcolor{obs}{  [2] Samsung Galaxy S24}
+  \textcolor{obs}{      Domain: en.wikipedia.org}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 3/5 ---}
-  \textcolor{thought}{Thought: I have gathered the display specifications for both}
-  \textcolor{thought}{devices. Now, I can summarize and compare their main specs.}
+  \textcolor{thought}{Thought: I have gathered the display specifications for}
+  \textcolor{thought}{both the iPhone 15 and the Samsung S24. Now I can summarize}
+  \textcolor{thought}{the main display specs for comparison.}
   \textcolor{review}{[!] No Action or Answer detected, nudging LLM...}
 
 \textcolor{step}{--- Step 4/5 ---}
   \textcolor{thought}{Thought: Draft answer passed evidence review.}
 
-  \textcolor{answer}{Answer:}
-  \textcolor{answer}{iPhone 15: Super Retina XDR OLED, 6.1", 2556x1179, 60Hz,}
-  \textcolor{answer}{  2000 nits, HDR, True Tone, Dynamic Island}
-  \textcolor{answer}{Samsung S24: Dynamic AMOLED 2X, 6.2", 1080x2340, 120Hz,}
-  \textcolor{answer}{  2600 nits, HDR10+, Vision Booster, Gorilla Glass Victus 2}
-  \textcolor{answer}{}
-  \textcolor{answer}{The iPhone 15 has a slightly smaller display with a higher}
-  \textcolor{answer}{resolution and lower refresh rate, while the Samsung S24 has}
-  \textcolor{answer}{a higher refresh rate and peak brightness.}
+  \textcolor{answer}{Answer: The main display specifications are as follows:}
+  \textcolor{answer}{iPhone 15: Super Retina XDR OLED, 6.1", 2556 x 1179,}
+  \textcolor{answer}{  60 Hz, 2000 nits, HDR, True Tone, Dynamic Island}
+  \textcolor{answer}{Samsung S24: Dynamic AMOLED 2X, 6.2", 1080 x 2340,}
+  \textcolor{answer}{  120 Hz, 2600 nits, HDR10+, Gorilla Glass Victus 2}
+  \textcolor{answer}{The iPhone 15 has a higher resolution and pixel density,}
+  \textcolor{answer}{while the Samsung S24 has a higher refresh rate and}
+  \textcolor{answer}{peak brightness.}
 \end{Verbatim}
 ```
 
 ### Analysis
 
 - **Search Strategy**：Agent 分別搜尋兩支手機的規格，共兩次搜尋取得完整資訊。
-- **具體規格差異**：成功擷取到 60Hz vs 120Hz refresh rate、resolution 差異（2556x1179 vs 1080x2340）、亮度差異（2000 vs 2600 nits）、HDR 支援差異等關鍵規格。
+- **具體規格差異**：成功擷取到 60Hz vs 120Hz refresh rate、resolution 差異（2556x1179 vs 1080x2340）、亮度差異（2000 vs 2600 nits）等關鍵規格。
 - **格式遵從問題**：Step 3 中 LLM 直接輸出比較內容但遺漏 `Answer:` 前綴，觸發 nudge 機制。這是 gpt-4o-mini 在 instruction following 上的常見問題 -- 當資訊充足時，模型傾向直接輸出答案而忽略格式約束。Nudge 機制在此展現了其必要性。
 - **步數**：4 步完成（2 次搜尋 + 1 次 nudge + 1 次 answer）。
 
@@ -460,64 +526,64 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
 
 搜尋引擎對「Morphic CEO」的回傳結果會混合這些不同實體，構成 entity disambiguation 挑戰。
 
-### Trace A: gpt-4o-mini (Incorrect -- Entity Mismatch)
+### Console Trace (gpt-4o-mini)
 
 ```{=latex}
 \begin{Verbatim}[fontsize=\small, frame=single, framesep=2mm, commandchars=\\\{\}]
 \textcolor{step}{--- Step 1/5 ---}
-  \textcolor{thought}{Thought: I need to find the current CEO of the startup}
-  \textcolor{thought}{'Morphic' that focuses on AI search.}
-  \textcolor{action}{Action: search["Morphic AI search CEO"]}
+  \textcolor{thought}{Thought: I need to find information about the CEO of the}
+  \textcolor{thought}{startup 'Morphic' that focuses on AI search.}
+  \textcolor{action}{Action: search[Morphic AI search CEO]}
   \textcolor{obs}{Observation:}
   \textcolor{obs}{  [1] Morphic - 2026 Company Profile \& Team - Tracxn}
   \textcolor{obs}{      Domain: tracxn.com}
-  \textcolor{obs}{      URL: tracxn.com/d/companies/morphic/...}
   \textcolor{obs}{      Snippet: Jaynti Kanani is the current CEO of Morphic.}
-  \textcolor{obs}{      Headquartered in San Francisco, United States.}
   \textcolor{obs}{  [2] Morphic Management Team - CB Insights}
   \textcolor{obs}{      Domain: cbinsights.com}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 2/5 ---}
-  \textcolor{thought}{Thought: There seems to be conflicting information. One}
-  \textcolor{thought}{source states Jaynti Kanani, while another claims Weston}
-  \textcolor{thought}{Baker. I need to verify.}
-  \textcolor{action}{Action: search["Morphic AI Weston Baker Jaynti Kanani}
-  \textcolor{action}{  CEO confirmation"]}
-  \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Polygon Cofounder Jaynti Kanani Steps Down...}
-  \textcolor{obs}{      Domain: inc42.com}
-  \textcolor{obs}{      URL: inc42.com/buzz/polygon-cofounder-jaynti-kanani...}
-  \textcolor{obs}{  [2] Morphic Launches AI Anime 'DQN' \& \$1M Fund}
-  \textcolor{obs}{      Domain: animationmagazine.net}
-  \textcolor{obs}{  ... (19 more lines)}
-
-\textcolor{step}{--- Step 3/5 ---}
-  \textcolor{thought}{Thought: The search results still show conflicting info.}
-  \textcolor{thought}{I need to clarify the current leadership structure.}
-  \textcolor{action}{Action: search["Morphic AI leadership team 2026"]}
+  \textcolor{thought}{Thought: There are conflicting sources regarding the CEO}
+  \textcolor{thought}{of Morphic. One source states Jaynti Kanani, while another}
+  \textcolor{thought}{claims Weston Baker. I need to clarify.}
+  \textcolor{action}{Action: search[Morphic AI search company CEO clarification]}
   \textcolor{obs}{Observation:}
   \textcolor{obs}{  [1] Morphic - 2026 Company Profile \& Team - Tracxn}
   \textcolor{obs}{      Domain: tracxn.com}
   \textcolor{obs}{      Snippet: Jaynti Kanani is the current CEO of Morphic.}
-  \textcolor{obs}{  [2] Meet The Morphic Management Team}
-  \textcolor{obs}{      Domain: morphicmedical.com}
+  \textcolor{obs}{  [2] Morphic Management Team - CB Insights}
+  \textcolor{obs}{      Domain: cbinsights.com}
+  \textcolor{obs}{  ... (19 more lines)}
+
+\textcolor{step}{--- Step 3/5 ---}
+  \textcolor{thought}{Thought: The search results continue to show conflicting}
+  \textcolor{thought}{information. I will check the official website of Morphic.}
+  \textcolor{action}{Action: search[Morphic official website]}
+  \textcolor{obs}{Observation:}
+  \textcolor{obs}{  [1] About - Morphic}
+  \textcolor{obs}{      Domain: morphic.com}
+  \textcolor{obs}{      Snippet: Morphic is a platform designed to empower}
+  \textcolor{obs}{      creators, filmmakers, and animators in producing}
+  \textcolor{obs}{      high-quality stories using AI.}
+  \textcolor{obs}{  [2] Morphic makes computers easier to use}
+  \textcolor{obs}{      Domain: morphic.org}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 4/5 ---}
-  \textcolor{thought}{Thought: Jaynti Kanani is indicated as CEO of Morphic.}
-  \textcolor{thought}{Let me confirm he is the CEO of Morphic AI, not Medical.}
-  \textcolor{action}{Action: search["Morphic AI Jaynti Kanani CEO}
-  \textcolor{action}{  confirmation 2026"]}
+  \textcolor{thought}{Thought: The official website does not provide specific CEO}
+  \textcolor{thought}{information. I will report the ambiguity in my answer.}
+  \textcolor{review}{[!] Evidence review requested more search: The draft answer}
+  \textcolor{review}{    mentions conflicting reports but does not clearly state}
+  \textcolor{review}{    which source is more reliable.}
+  \textcolor{thought}{Thought: Running one targeted disambiguation search.}
+  \textcolor{action}{Action: search[Clarify the current CEO of Morphic AI search]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Morphic to Produce AI Anime Series... - Variety}
+  \textcolor{obs}{  [1] Who is the CEO of Morphic Therapeutic?}
+  \textcolor{obs}{      Domain: clay.com}
+  \textcolor{obs}{      Snippet: Praveen Tipirneni is the CEO of Morphic}
+  \textcolor{obs}{      Therapeutic, a biotech company.}
+  \textcolor{obs}{  [2] Morphic to Produce AI Anime Series - Variety}
   \textcolor{obs}{      Domain: variety.com}
-  \textcolor{obs}{      URL: variety.com/2025/global/news/morphic-ai-anime...}
-  \textcolor{obs}{      Snippet: ...said Jaynti Kanani, former CEO and founder}
-  \textcolor{obs}{      of blockchain company Polygon, who launched Morphic}
-  \textcolor{obs}{      in 2024 with bases in San Jose, New York, Dubai...}
-  \textcolor{obs}{  [2] Morphic Launches AI Anime 'DQN' \& \$1M Fund}
-  \textcolor{obs}{      Domain: animationmagazine.net}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 5/5 ---}
@@ -527,121 +593,107 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
 \textcolor{step}{--- Finalize ---}
   \textcolor{thought}{Thought: Synthesizing evidence and resolving ambiguity.}
 
-  \textcolor{answer}{Answer: The current CEO of Morphic, a startup focused on}
-  \textcolor{answer}{AI search, is Jaynti Kanani. He has been leading the}
-  \textcolor{answer}{company since its launch in 2024, and Morphic is}
-  \textcolor{answer}{dedicated to empowering creators and filmmakers with}
-  \textcolor{answer}{advanced technology.}
+  \textcolor{answer}{Answer: The current CEO of Morphic AI is Jaynti Kanani,}
+  \textcolor{answer}{as stated in multiple sources. However, there is conflicting}
+  \textcolor{answer}{information regarding the leadership of Morphic, as another}
+  \textcolor{answer}{source lists Weston Baker as the CEO. This ambiguity suggests}
+  \textcolor{answer}{that there may be multiple entities named Morphic.}
 \end{Verbatim}
 ```
 
-### Trace B: MiniMax M2.5 (Inconclusive -- 正確辨識歧義)
+### MiniMax M2.5 對照實驗
 
-為對照不同模型在相同架構上的表現，以相同程式碼切換至 MiniMax M2.5 進行測試：
+為對照不同模型在相同架構上的表現，以相同程式碼切換至 MiniMax M2.5 進行 Task 3 測試：
 
 ```{=latex}
 \begin{Verbatim}[fontsize=\small, frame=single, framesep=2mm, commandchars=\\\{\}]
 \textcolor{step}{--- Step 1/5 ---}
   \textcolor{thought}{Thought: I need to find information about a startup called}
-  \textcolor{thought}{"Morphic" that is related to AI search, and who its CEO is.}
+  \textcolor{thought}{"Morphic" related to AI search and who its CEO is.}
   \textcolor{action}{Action: search[Morphic AI search startup CEO]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Morphic - 2026 Company Profile \& Team - Tracxn}
-  \textcolor{obs}{      Domain: tracxn.com}
-  \textcolor{obs}{      URL: tracxn.com/d/companies/morphic/...}
-  \textcolor{obs}{      Snippet: Jaynti Kanani is the current CEO of Morphic.}
-  \textcolor{obs}{  [2] Eric Vardon - Morphio.ai (different company)}
+  \textcolor{obs}{  [1] Eric Vardon is Co-Founder and CEO of Morphio.ai}
   \textcolor{obs}{      Domain: youtube.com}
+  \textcolor{obs}{  [2] Morphic - 2026 Company Profile \& Team - Tracxn}
+  \textcolor{obs}{      Domain: tracxn.com}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 2/5 ---}
-  \textcolor{thought}{Thought: The search results show conflicting information}
-  \textcolor{thought}{and different companies named "Morphic". Let me search}
-  \textcolor{thought}{more specifically for the AI search engine startup.}
+  \textcolor{thought}{Thought: The results show multiple companies named "Morphic".}
+  \textcolor{thought}{I need to search more specifically for the AI search startup.}
   \textcolor{action}{Action: search["Morphic" AI search engine startup]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Introducing Morphic: AI-Powered Search Engine}
-  \textcolor{obs}{      Domain: linkedin.com}
-  \textcolor{obs}{      URL: linkedin.com/posts/hamza-abar...}
-  \textcolor{obs}{  [2] AI startup Morphic unveils AI-powered anime DQN...}
+  \textcolor{obs}{  [1] \$1 Million up for grabs for emerging creators.}
   \textcolor{obs}{      Domain: instagram.com}
+  \textcolor{obs}{  [2] Morphic launches AI anime series - LinkedIn}
+  \textcolor{obs}{      Domain: linkedin.com}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 3/5 ---}
-  \textcolor{thought}{Thought: The results show Morphic is related to AI anime}
-  \textcolor{thought}{production, not necessarily AI search. But the first}
-  \textcolor{thought}{result mentions "Morphic: AI-Powered Search Engine".}
+  \textcolor{thought}{Thought: I found Morphic is an AI-powered search engine.}
+  \textcolor{thought}{Now I need to find the specific CEO/founder.}
   \textcolor{action}{Action: search[Morphic AI search engine founder CEO]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Weston Baker - Morphic}
-  \textcolor{obs}{      Domain: linkedin.com}
-  \textcolor{obs}{      URL: linkedin.com/in/westonbaker}
-  \textcolor{obs}{      Snippet: Founder @ Morphic | AI-Powered Websites}
-  \textcolor{obs}{      for VCs \& Growth Firms}
-  \textcolor{obs}{  [2] Morphic Launches AI Anime 'DQN' \& \$1M Fund}
-  \textcolor{obs}{      Domain: animationmagazine.net}
+  \textcolor{obs}{  [1] Morphic - 2026 Company Profile - Tracxn}
+  \textcolor{obs}{      Domain: tracxn.com}
+  \textcolor{obs}{      Snippet: Jaynti Kanani is the current CEO of Morphic.}
+  \textcolor{obs}{  [2] Eric Vardon is Co-Founder and CEO of Morphio.ai}
+  \textcolor{obs}{      Domain: youtube.com}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 4/5 ---}
-  \textcolor{thought}{Thought: There are multiple companies named "Morphic"}
-  \textcolor{thought}{with different focuses. I need to find specifically the}
-  \textcolor{thought}{"Morphic" that is an AI search startup.}
-  \textcolor{action}{Action: search["Morphic" "AI search" startup company]}
+  \textcolor{thought}{Thought: I found a reference to "JD Kanani, Founder \& CEO"}
+  \textcolor{thought}{on morphic.com. Let me verify this is the correct Morphic.}
+  \textcolor{action}{Action: search["JD Kanani" Morphic founder CEO]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] AI startup Morphic unveils AI-powered anime DQN...}
-  \textcolor{obs}{      Domain: notebookcheck.net}
-  \textcolor{obs}{      URL: notebookcheck.net/.../morphic-ai-anime...}
-  \textcolor{obs}{  [2] Morphic | LinkedIn}
-  \textcolor{obs}{      Domain: linkedin.com}
+  \textcolor{obs}{  [1] Jaynti Kanani - Founder \& CEO at Morphic - The Org}
+  \textcolor{obs}{      Domain: theorg.com}
+  \textcolor{obs}{      Snippet: Jaynti Kanani holds the position of Founder}
+  \textcolor{obs}{      \& CEO at both Mozak and Morphic.}
+  \textcolor{obs}{  [2] Jaynti Kanani Email - RocketReach}
+  \textcolor{obs}{      Domain: rocketreach.co}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Step 5/5 ---}
-  \textcolor{thought}{Thought: I found morphic.sh -- an "open-source AI search}
-  \textcolor{thought}{engine." Let me get more info about its CEO.}
-  \textcolor{action}{Action: search[morphic.sh founder CEO]}
+  \textcolor{thought}{Thought: I need to verify that Jaynti Kanani is indeed}
+  \textcolor{thought}{the CEO of the Morphic that operates the AI search engine.}
+  \textcolor{action}{Action: search[morphic.sh founder CEO Jaynti Kanani]}
   \textcolor{obs}{Observation:}
-  \textcolor{obs}{  [1] Founder Stories: Praveen Tipirneni, CEO of}
-  \textcolor{obs}{      Morphic Therapeutic}
-  \textcolor{obs}{      Domain: youtube.com}
-  \textcolor{obs}{  [2] Who is the CEO of Morphic Therapeutic?}
-  \textcolor{obs}{      Domain: clay.com}
+  \textcolor{obs}{  [1] Jaynti Kanani - Founder \& CEO at Morphic - The Org}
+  \textcolor{obs}{      Domain: theorg.com}
+  \textcolor{obs}{  [2] Jaynti Kanani}
+  \textcolor{obs}{      Domain: contra.com}
   \textcolor{obs}{  ... (19 more lines)}
 
 \textcolor{step}{--- Finalize ---}
   \textcolor{thought}{Thought: Synthesizing evidence and resolving ambiguity.}
-  \textcolor{review}{Finalize: answer\_type=inconclusive}
 
-  \textcolor{answer}{Final: The observations show multiple companies named}
-  \textcolor{answer}{"Morphic" operating in different domains:}
-  \textcolor{answer}{- morphic.sh (AI search engine, open-source)}
-  \textcolor{answer}{- morphic.com (Jaynti Kanani, AI anime production)}
-  \textcolor{answer}{- getmorphic.com (Weston Baker, AI web design)}
-  \textcolor{answer}{- Morphic Therapeutic (Praveen Tipirneni, biotech)}
-  \textcolor{answer}{Without a verbatim quote from morphic.sh specifically}
-  \textcolor{answer}{identifying their leadership, the answer remains}
-  \textcolor{answer}{inconclusive.}
+  \textcolor{answer}{Answer: The search results reveal multiple companies named}
+  \textcolor{answer}{"Morphic" operating in different domains: morphic.sh}
+  \textcolor{answer}{(AI search engine), morphic.com (AI storytelling/animation),}
+  \textcolor{answer}{and others. Without explicit verification linking Jaynti}
+  \textcolor{answer}{Kanani directly to the AI search engine division, the}
+  \textcolor{answer}{answer remains inconclusive.}
 \end{Verbatim}
 ```
 
-### Task 3 Analysis
+### Analysis
 
 **gpt-4o-mini 的行為**：
 
 - Step 1-2 正確識別了搜尋結果中的衝突（Jaynti Kanani vs Weston Baker），展現初步 reflection
-- Step 2 使用 targeted verification query（`"Morphic AI Weston Baker Jaynti Kanani CEO confirmation"`），將兩個候選人名嵌入搜尋。這是新版 prompt 允許的合法調查行為，但模型未能從結果中區分不同實體
-- Step 3-4 持續搜尋，Step 4 找到 Variety 文章明確描述 Jaynti Kanani 為 Polygon 前共同創辦人、2024 年成立 Morphic 做 AI anime -- 但模型忽略了「anime」這個關鍵 product type descriptor
+- Step 3 搜尋 `morphic.com/about` 發現是「creators, filmmakers, and animators」平台，但模型沒有區分「AI animation」vs「AI search」
 - **Entity Mismatch 未被偵測**：模型錯誤地認定 Jaynti Kanani 為「Morphic AI search」的 CEO，未區分 morphic.com（AI 影片/動畫平台）與 morphic.sh（AI 搜尋引擎）
-- Review Gate 在 Step 5 偵測到證據缺口，但 review budget 已用完，進入 Finalize
-- **Finalize 未能修正錯誤**：Finalize 階段也使用 gpt-4o-mini，同樣未能辨識 entity mismatch，最終輸出錯誤答案
-- 與舊版 prompt 相比：舊版收斂在 Weston Baker（getmorphic.com 網頁設計），新版收斂在 Jaynti Kanani（morphic.com AI anime）-- 錯誤實體不同，但核心問題相同
+- Review Gate 在 Step 4 偵測到證據缺口，觸發一次額外搜尋
+- Step 5 review budget 用完，進入 Finalize
+- **Finalize 未能修正錯誤**：最終輸出錯誤答案，指出 Jaynti Kanani 為 CEO 但承認有歧義
 
 **MiniMax M2.5 的行為**：
 
-- 第一步即識別出搜尋結果包含不同公司，主動縮窄搜尋範圍
-- Step 2 使用中性 query（`"Morphic" AI search engine startup`）找到 morphic.sh 相關的 LinkedIn 文章
-- Step 3 找到 Weston Baker（getmorphic.com, AI 網站建置），正確辨識其為不同 Morphic
-- Step 4-5 逐步縮窄至 morphic.sh，但搜尋結果被 Morphic Therapeutic（生技公司）干擾
-- Finalize 正確輸出 inconclusive，列出四個不同 Morphic 實體及其各自領域
+- Step 1-2 識別出搜尋結果包含不同公司，主動縮窄搜尋範圍
+- Step 3-4 持續搜尋，嘗試確認 Jaynti Kanani 是否為 AI search engine 的 CEO
+- Step 5 搜尋 `morphic.sh founder CEO` 但結果仍被其他同名實體干擾
+- Finalize 正確輸出 inconclusive，列出多個不同 Morphic 實體
 
 **Reflection 路徑對比**：
 
@@ -652,15 +704,13 @@ Snippet 長度上限 500 字元，超過部分截斷並加 `...`，防止單一�
 \hline
 Entity 識別 & 識別衝突但未深入區分 & 逐步區分不同實體 \\
 \hline
-搜尋策略 & 4 次搜尋，嵌入候選人名驗證 & 5 次搜尋，逐步縮窄至 morphic.sh \\
+搜尋策略 & 4 次搜尋 + 1 次 review 觸發的搜尋 & 5 次搜尋 \\
 \hline
-Targeted Verification & 使用但導致錯誤收斂 & 未嵌入候選人名，穩定使用中性 query \\
+Entity Mismatch & 未偵測（animation vs AI search） & 正確識別歧義 \\
 \hline
-Entity Mismatch & 未偵測（anime vs AI search） & 正確區分不同 product type \\
+Review Gate & Step 4 觸發額外搜尋 & 未進入（5 步用完） \\
 \hline
-Review Gate & Step 5 偵測到 gap，budget 用完 & 未進入（5 步用完） \\
-\hline
-最終結果 & Incorrect（Jaynti Kanani） & Inconclusive（正確的保守輸出） \\
+最終結果 & Incorrect（有歧義但給答案） & Inconclusive（正確的保守輸出） \\
 \hline
 \end{tabularx}
 ```
@@ -711,17 +761,18 @@ Python orchestration 層設置最小限度的結構化檢查（如 observation �
 |                 | Task 1           | Task 2           | Task 3 (4o-mini) | Task 3 (MiniMax) |
 |-----------------|------------------|------------------|-------------------|------------------|
 | Steps Used      | 4/5              | 4/5              | 5/5               | 5/5              |
-| Search Calls    | 2                | 2                | 4                 | 5                |
+| Search Calls    | 2                | 2                | 4 + 1 (review)    | 5                |
 | Calculate Calls | 1                | 0                | 0                 | 0                |
 | Decomposition   | Yes              | Yes              | N/A               | N/A              |
 | Reflection      | No (unnecessary) | No (unnecessary) | Yes (partial)     | Yes (full)       |
 | Nudge Triggered | No               | Yes (Step 3)     | No                | No               |
-| Review Gate     | Accept           | Accept           | Revise (too late) | N/A (5 步用完)   |
+| Review Gate     | Accept           | Accept           | Revise + Retry    | N/A (5 步用完)   |
 | Result          | Correct          | Correct          | Incorrect         | Inconclusive     |
 
 Task 1、2 在 4 步內主動完成；Task 3 兩個模型都用滿 5 步上限，是被迫結束而非主動收斂 -- 這反映了 entity disambiguation 問題的搜尋複雜度超出 5 步預算。整體而言，三個 Task 展現了 ReAct pattern 的核心能力與局限：
 
-1. **Task Decomposition**：複雜問題（Task 1, 2）被自動拆解為多個子問題依序處理。
+1. **Task Decomposition**：複雜問題（Task 1, 2）被自動拆解為多個子問題依序處理。3-shot Few-Shot 範例有效引導模型採取正確的 decomposition 策略。
 2. **Tool Selection**：Agent 根據子問題性質選擇適當工具（搜尋 vs 計算）。
-3. **Resilience & Reflection**：Task 3 展示了 self-correction 流程的完整光譜 -- gpt-4o-mini 在 Thought 中識別了搜尋結果的衝突（reflection），並使用 targeted verification query 嵌入候選人名搜尋，但在語意推理層面未能區分 AI anime（morphic.com）與 AI search（morphic.sh），最終給出錯誤答案；MiniMax M2.5 則透過更精確的 entity disambiguation 和中性搜尋策略，正確判定證據不足並輸出 inconclusive。
+3. **Resilience & Reflection**：Task 3 展示了 self-correction 流程的完整光譜 -- gpt-4o-mini 在 Thought 中識別了搜尋結果的衝突（reflection），但在語意推理層面未能區分 AI animation（morphic.com）與 AI search（morphic.sh），最終給出錯誤答案；MiniMax M2.5 則透過更精確的 entity disambiguation，正確判定證據不足並輸出 inconclusive。
 4. **Model-Agnostic Architecture**：同一套 agent 程式碼在不同模型上展現不同水平的表現，驗證了架構設計的可遷移性。Structural guard 提供了最低安全保障，但最終結果品質仍取決於模型本身的語意推理能力。
+5. **Few-Shot Design**：三個 Few-Shot 範例分別展示 Task Decomposition、Reflection、Ambiguity Handling 能力。Example 2 與 Example 3 為 Task 3 的 Reflection 與 Entity Disambiguation 提供行為示範，但 gpt-4o-mini 在 product type mismatch 偵測上仍受限於模型本身的語意推理能力。

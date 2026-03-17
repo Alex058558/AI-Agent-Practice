@@ -45,7 +45,8 @@ IMPORTANT:
 - If ambiguity remains after a reasonable retry, give an Answer that says the evidence is inconclusive and briefly list the conflicting entities you found, instead of guessing.
 - Break complex questions into sub-questions and solve them step by step.
 
-Example session:
+=== EXAMPLE 1: Task Decomposition ===
+
 Question: What is the population ratio of Japan to France?
 Thought: I need to find the populations of both Japan and France. Let me start with Japan.
 Action: search[Japan population 2024]
@@ -81,6 +82,82 @@ Observation: 1.8026315789473686
 
 Thought: The ratio is approximately 1.80. I have all the information needed.
 Answer: The population ratio of Japan to France is approximately 1.80:1. Japan (123.3 million) has about 1.8 times the population of France (68.4 million).
+
+=== EXAMPLE 2: Reflection After Poor Results ===
+
+Question: What programming language was used to build the first version of Instagram?
+
+Thought: I need to find information about Instagram's tech stack in its early days.
+Action: search[Instagram programming language]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Instagram Engineering Blog
+Domain: instagram-engineering.com
+Snippet: Instagram now uses Python, Django, and various other technologies...
+
+[2] RESULT
+Title: What tech stack does Instagram use?
+Domain: quora.com
+Snippet: Instagram uses Python and Django framework...
+
+Thought: The search results show Instagram's current tech stack, but the question asks about the FIRST version. Let me try a more specific query.
+Action: search[Instagram first version original tech stack 2010]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Instagram's Early Days - TechCrunch
+Domain: techcrunch.com
+Snippet: Instagram was launched in 2010. The first version was built by Kevin Systrom using Python and Django...
+
+[2] RESULT
+Title: Instagram Engineering: Our History
+Domain: instagram-engineering.com
+Snippet: The first version of Instagram was built in just 8 weeks using Python with Django framework...
+
+Thought: Now I have the specific information about the first version. Multiple sources confirm it was built with Python and Django.
+Answer: The first version of Instagram, launched in 2010, was built using Python with the Django framework. It was developed by Kevin Systrom in about 8 weeks.
+
+=== EXAMPLE 3: Ambiguity Handling ===
+
+Question: Who is the CEO of Notion?
+
+Thought: I need to find Notion's CEO.
+Action: search[Notion CEO]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Notion - The all-in-one workspace
+Domain: notion.so
+Snippet: Notion is a productivity and note-taking app. Founded by Ivan Zhao and Simon Last.
+
+[2] RESULT
+Title: Notion AI - Research Lab
+Domain: notion.ai
+Snippet: Notion AI is an artificial intelligence research company based in San Francisco...
+
+Thought: I found two different companies named "Notion": notion.so (productivity workspace) and notion.ai (AI research company). The question doesn't specify which one. I need to clarify and search more specifically.
+Action: search[Notion workspace productivity app notion.so CEO]
+PAUSE
+
+Observation:
+[1] RESULT
+Title: Notion Labs - About Us
+Domain: notion.so
+Snippet: Notion Labs was founded by Ivan Zhao and Simon Last. Ivan Zhao serves as CEO.
+
+[2] RESULT
+Title: Notion AI Research - Team
+Domain: notion.ai
+Snippet: Notion AI Research is led by a different leadership team...
+
+Thought: I have identified two distinct entities with the name "Notion". For the productivity workspace (notion.so), Ivan Zhao is the CEO. For the AI research company (notion.ai), the leadership is different. Since the question doesn't specify, I should report this ambiguity.
+Answer: There are multiple companies named "Notion". If you mean Notion (notion.so), the productivity workspace, the CEO is Ivan Zhao. If you mean Notion AI (notion.ai), an AI research company, the leadership differs. Please specify which company you are referring to.
+
+=== END EXAMPLES ===
 """
 
 FINALIZE_SYSTEM_PROMPT = """You are now in the FINALIZE phase for a ReAct agent.
@@ -183,12 +260,19 @@ class ReActAgent:
         for i in range(1, MAX_ITERATIONS + 1):
             self.on_step("iteration", f"--- Step {i}/{MAX_ITERATIONS} ---")
 
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                stop=["PAUSE", "Observation:"],
-                temperature=0.2,
-            )
+            try:
+                response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    stop=["PAUSE", "Observation:"],
+                    temperature=0.2,
+                )
+            except Exception as e:
+                self.on_step("error", f"LLM API error: {e}")
+                if i < MAX_ITERATIONS:
+                    self.on_step("thought", "Thought: API call failed, retrying...")
+                    continue
+                return "I encountered an API error while processing your request. Please try again."
 
             raw = (response.choices[0].message.content or "").strip()
             if not raw:
