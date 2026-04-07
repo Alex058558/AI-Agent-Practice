@@ -161,3 +161,8 @@ assignment-3/
 ## 授權
 
 本專案僅供學術用途。
+
+## 相關文件
+
+- [REQUIREMENTS.md](./REQUIREMENTS.md) - 作業需求詳細說明
+- [.plan/current.md](./.plan/current.md) - 實作計劃與進度記錄
