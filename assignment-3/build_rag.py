@@ -4,7 +4,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from termcolor import colored
-from config import get_embeddings, DATA_FOLDER, DB_FOLDER, FILES
+from config import get_embeddings, DATA_FOLDER, DB_FOLDER, FILES, CHUNK_SIZE, CHUNK_OVERLAP
 
 
 def clean_text(text: str) -> str:
@@ -44,8 +44,8 @@ def build_vector_dbs():
             doc.page_content = clean_text(doc.page_content)
 
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
             separators=["\n\n", "\n", " ", ""],
         )
 

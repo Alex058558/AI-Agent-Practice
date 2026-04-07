@@ -23,9 +23,11 @@ FILES = {
 }
 
 # ==============================================================================
-# 3. Embedding Model (Can Change)
+# 3. Embedding Model (Configurable via environment)
 # ==============================================================================
-LOCAL_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+LOCAL_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "2000"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "400"))
 
 def get_embeddings():
     print(colored(f"[INFO] Loading Local Embedding Model: {LOCAL_EMBEDDING_MODEL}...", "cyan"))

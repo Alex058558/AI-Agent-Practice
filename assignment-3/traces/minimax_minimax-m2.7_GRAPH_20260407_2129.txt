@@ -1,0 +1,49 @@
+
+==================================================
+  ASSIGNMENT 3 EVALUATION REPORT
+  Time: 2026-04-07 21:29:03
+  Agent Mode: GRAPH
+==================================================
+
+STARTING EVALUATION...
+==================================================
+
+Running: Test A: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: 根據 Apple 的財務報表，Apple 2024 財年（截至 2024 年 9 月 28 日）的 **總營收 (Total net sales)** 為：
+
+**$391,035 百萬美元**（約 3,910.35 億美元）
+
+[Source: Apple 10-K — Twelve Months Ended September 28, 2024]
+[PASS] (28.19s)
+--------------------------------------------------
+Running: Test B: Tesla R&D...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: 根據所提供的上下文，Tesla 2024 年的研發費用（R&D expenses）為 **$4,540 百萬美元**（即 45.4 億美元）。
+
+[Source: Tesla 10-K - Consolidated Statements of Operations]
+[PASS] (21.35s)
+--------------------------------------------------
+Running: Test D: Apple Services Cost...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: ## Apple 2024 會計年度「服務成本 (Cost of Sales - Services)」
+
+根據 Apple 2024 年度報告（十二個月期間，截至 2024 年 9 月 28 日），**服務成本為 $25,119 百萬美元**（約 251.19 億美元）。
+
+[Source: Apple Condensed Consolidated Statements of Operations - Twelve Months Ended September 28, 2024]
+[PASS] (29.34s)
+--------------------------------------------------
+Running: Test E: Tesla Energy Revenue...
+--- RETRIEVING ---

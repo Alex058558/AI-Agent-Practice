@@ -1,0 +1,211 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[INFO] Loading Local Embedding Model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2...
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 11283.85it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event ClientStartEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event CollectionQueryEvent: capture() takes 1 positional argument but 3 were given
+Failed to send telemetry event CollectionQueryEvent: capture() takes 1 positional argument but 3 were given
+
+==================================================
+  ASSIGNMENT 3 EVALUATION REPORT
+  Time: 2026-04-07 22:07:32
+  Agent Mode: GRAPH
+==================================================
+
+STARTING EVALUATION...
+==================================================
+
+Running: Test A: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's total net sales for the twelve months ended September 28, 2024, was $391,035 million [Source: Apple].
+[PASS] (19.68s)
+--------------------------------------------------
+Running: Test B: Tesla R&D...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Tesla's research and development expenses for 2024 were $4,540 million [Source: Tesla].
+[PASS] (36.86s)
+--------------------------------------------------
+Running: Test D: Apple Services Cost...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: For the twelve months ended September 28, 2024, Apple's cost of sales for services was $25,119 million [Source: Apple].
+[PASS] (8.84s)
+--------------------------------------------------
+Running: Test E: Tesla Energy Revenue...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Tesla's revenue for "Energy generation and storage" in 2024 was $10,086 million. [Source: Tesla]
+[PASS] (10.29s)
+--------------------------------------------------
+Running: Test G: Unknown Info...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What is the projected Average Selling Price (ASP) for the iPhone 17 scheduled for release in fiscal year 2025?
+--- RETRIEVING ---
+[WARN] Router parse error: {'message': 'Provider returned error', 'code': 503}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What is the projected Average Selling Price (ASP) for the iPhone 17 in the fiscal year 2025 guidance or forward-looking statements?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: The provided documents do not contain information regarding the projected Average Selling Price (ASP) for the iPhone 17 or any fiscal year 2025 guidance or forward-looking statements. [Source: Apple]
+[PASS] (70.45s)
+--------------------------------------------------
+Running: Test A1 [Eng]: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's Total net sales for the twelve months ended September 28, 2024, was $391,035 million [Source: Apple].
+[PASS] (23.04s)
+--------------------------------------------------
+Running: Test A2 [Eng]: Tesla Automotive Revenue...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: The specific revenue figure for 'Automotive sales' for Tesla in 2024 was $72,480 million [Source: Tesla].
+[PASS] (22.79s)
+--------------------------------------------------
+Running: Test B1 [Mixed]: Apple R&D...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's research and development expenses for the twelve months ended September 28, 2024, were $31,370 million. [Source: Apple]
+[PASS] (37.25s)
+--------------------------------------------------
+Running: Test B2 [Mixed]: Tesla CapEx...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Tesla's capital expenditures in 2024 consisted of:
+*   Purchases of property and equipment excluding finance leases, net of sales: $11,339 million
+*   Purchases of solar energy systems, net of sales: $3 million
+
+[Source: Tesla]
+[PASS] (24.78s)
+--------------------------------------------------
+Running: Test C1 [Eng]: R&D Comparison...
+--- RETRIEVING ---
+  -> Routing to: both
+--- GRADING ---
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: Compare the consolidated Research and Development (R&D) expenses for Apple Inc. and Tesla, Inc. for the 2024 fiscal year as reported in their respective Income Statements or Notes to Consolidated Financial Statements.
+--- RETRIEVING ---
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: Compare the "Research and Development" line item within the Consolidated Statements of Operations for Apple Inc. and Tesla, Inc. for fiscal year 2024, including any related disclosures in the Notes to Consolidated Financial Statements.
+--- RETRIEVING ---
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: For fiscal year 2024, the "Research and development" expenditure for Apple Inc. was $31,370 million [Source: Apple]. The provided context for Tesla, Inc. does not contain its Consolidated Statements of Operations or the specific "Research and Development" line item for fiscal year 2024; therefore, a...
+[FAIL] (92.78s)
+   Agent Answer: For fiscal year 2024, the "Research and development" expenditure for Apple Inc. was $31,370 million [Source: Apple]. The provided context for Tesla, Inc. does not contain its Consolidated Statements of Operations or the specific "Research and Development" line item for fiscal year 2024; therefore, a...
+   Judge Verdict: FAIL
+--------------------------------------------------
+Running: Test C2 [Eng]: Gross Margin Analysis...
+--- RETRIEVING ---
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Based on the provided documents:
+
+*   **Apple:** For the twelve months ended September 28, 2024, Apple had a gross margin of $180,683 million and total net sales of $391,035 million [Source: Apple]. This results in an approximate gross margin percentage of **46.2%**.
+*   **Tesla:** The provided text...
+[FAIL] (28.83s)
+   Agent Answer: Based on the provided documents:
+
+*   **Apple:** For the twelve months ended September 28, 2024, Apple had a gross margin of $180,683 million and total net sales of $391,035 million [Source: Apple]. This results in an approximate gross margin percentage of **46.2%**.
+*   **Tesla:** The provided text...
+   Judge Verdict: FAIL
+--------------------------------------------------
+Running: Test D1 [Eng]: Apple Services Cost...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: According to the Condensed Consolidated Statements of Operations, Apple's cost of sales for Services in 2024 was $25,119 million [Source: Apple].
+[PASS] (14.73s)
+--------------------------------------------------
+Running: Test E1 [Mixed]: 2025 Projection (Trap)...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: Does the 10-K or earnings report provide specific guidance or quantitative projections for iPhone unit sales volume for fiscal year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: Does the 10-K or earnings report disclose quantitative forward-looking guidance or specific projections for iPhone unit shipment volumes for fiscal year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: The provided documents do not contain quantitative forward-looking guidance or specific projections for iPhone unit shipment volumes for fiscal year 2025. [Source: Apple]
+[PASS] (42.14s)
+--------------------------------------------------
+Running: Test F1 [Eng]: CEO Identity...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Elon Musk signed the 10-K report as the Chief Executive Officer (Principal Executive Officer) for Tesla [Source: Tesla].
+[PASS] (12.97s)
+--------------------------------------------------
+
+FINAL SCORE: 12/14
+
+[System] Log saved to traces/google_gemma-4-31b-it_GRAPH_20260407_2207.txt

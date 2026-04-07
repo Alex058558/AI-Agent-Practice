@@ -1,0 +1,82 @@
+
+==================================================
+  ASSIGNMENT 3 EVALUATION REPORT
+  Time: 2026-04-07 18:52:54
+  Agent Mode: GRAPH
+==================================================
+
+STARTING EVALUATION...
+==================================================
+
+Running: Test A: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Based on the provided document, Apple's total net sales for the twelve months ended September 28, 2024, were $391,035 million. [Source: Apple]
+[PASS] (34.95s)
+--------------------------------------------------
+Running: Test B: Tesla R&D...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Based on the provided context, Tesla's Research and Development (R&D) expenses for the year ended December 31, 2024, were **$4,540 million**. [Source: Tesla]
+[FAIL] (39.23s)
+   Agent Answer: Based on the provided context, Tesla's Research and Development (R&D) expenses for the year ended December 31, 2024, were **$4,540 million**. [Source: Tesla]
+   Judge Verdict: FAIL
+--------------------------------------------------
+Running: Test D: Apple Services Cost...
+--- RETRIEVING ---
+[WARN] Router parse error: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3.6-plus:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Alibaba', 'is_byok': False}}, 'user_id': 'user_2rqT3Wh5ZGHVRkTuNHDnPtA4X3Q'}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Based on the provided context, Apple's Cost of sales for Services for the twelve months ended September 28, 2024, was **$25,119 million**. [Source: Apple]
+[PASS] (32.82s)
+--------------------------------------------------
+Running: Test E: Tesla Energy Revenue...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Based on the provided context, Tesla's revenue for "Energy generation and storage" in 2024 was **$10,086 million**. [Source: Tesla]
+[FAIL] (40.55s)
+   Agent Answer: Based on the provided context, Tesla's revenue for "Energy generation and storage" in 2024 was **$10,086 million**. [Source: Tesla]
+   Judge Verdict: FAIL
+--------------------------------------------------
+Running: Test G: Unknown Info...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What is the disclosed Average Selling Price (ASP) guidance or forward-looking pricing strategy for the iPhone product segment in fiscal year 2025?
+--- RETRIEVING ---
+[WARN] Router parse error: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3.6-plus:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Alibaba', 'is_byok': False}}, 'user_id': 'user_2rqT3Wh5ZGHVRkTuNHDnPtA4X3Q'}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What forward-looking guidance or management outlook regarding iPhone Average Selling Price (ASP), pricing assumptions, and product mix is disclosed for Fiscal Year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+--- GRADING ---
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: The information is not available in the provided documents. The provided context only contains historical financial statements (including the Reconciliation of Non-GAAP to GAAP Results, Condensed Consolidated Statements of Operations, and Condensed Consolidated Statements of Cash Flows) for the fisc...
+[PASS] (169.68s)
+--------------------------------------------------
+Running: Test A1 [Eng]: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---

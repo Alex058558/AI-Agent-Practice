@@ -1,0 +1,184 @@
+
+==================================================
+  ASSIGNMENT 3 EVALUATION REPORT
+  Time: 2026-04-07 23:40:49
+  Agent Mode: GRAPH
+==================================================
+
+STARTING EVALUATION...
+==================================================
+
+Running: Test A: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's total net sales for the twelve months ended September 28, 2024, was $391,035 million. [Source: Apple]
+[PASS] (18.56s)
+--------------------------------------------------
+Running: Test B: Tesla R&D...
+--- RETRIEVING ---
+[WARN] Router parse error: {'message': 'Provider returned error', 'code': 503}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Tesla's research and development expenses for the year ended December 31, 2024, were $4,540 million. [Source: Tesla]
+[PASS] (36.40s)
+--------------------------------------------------
+Running: Test D: Apple Services Cost...
+--- RETRIEVING ---
+[WARN] Router parse error: {'message': 'The operation was aborted', 'code': 504}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: For the twelve months ended September 28, 2024, Apple's cost of sales for services was $25,119 million [Source: Apple].
+[PASS] (32.19s)
+--------------------------------------------------
+Running: Test E: Tesla Energy Revenue...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+--- REWRITING QUERY ---
+--- REWRITING QUERY ---
+  Rewritten: What was Tesla's total revenue for the "Energy generation and storage" segment in fiscal year 2024?
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Tesla's total revenue for the "Energy generation and storage" segment in fiscal year 2024 was $10,086 million [Source: Tesla].
+[PASS] (81.88s)
+--------------------------------------------------
+Running: Test G: Unknown Info...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What is the projected Average Selling Price (ASP) for the iPhone 17 scheduled for release in fiscal year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: What is the projected Average Selling Price (ASP) for the iPhone 17 product line within the fiscal year 2025 revenue guidance or forward-looking statements?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: The provided documents do not contain information regarding the projected Average Selling Price (ASP) for the iPhone 17 product line, fiscal year 2025 revenue guidance, or any forward-looking statements. [Source: Apple]
+[PASS] (46.54s)
+--------------------------------------------------
+Running: Test A1 [Eng]: Apple Revenue...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's Total net sales for the twelve months ended September 28, 2024, was $391,035 million [Source: Apple].
+[PASS] (15.38s)
+--------------------------------------------------
+Running: Test A2 [Eng]: Tesla Automotive Revenue...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: The specific revenue figure for 'Automotive sales' for Tesla in 2024 was $72,480 million [Source: Tesla].
+[PASS] (8.62s)
+--------------------------------------------------
+Running: Test B1 [Mixed]: Apple R&D...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Apple's research and development expenses for the twelve months ended September 28, 2024, were $31,370 million. [Source: Apple]
+[PASS] (5.21s)
+--------------------------------------------------
+Running: Test B2 [Mixed]: Tesla CapEx...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: In 2024, Tesla's capital expenditures (purchases of property and equipment excluding finance leases, net of sales) were $11,339 million [Source: Tesla].
+[PASS] (5.57s)
+--------------------------------------------------
+Running: Test C1 [Eng]: R&D Comparison...
+--- RETRIEVING ---
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: In 2024, Apple spent more on Research and Development (R&D) than Tesla:
+
+*   **Apple:** $31,370 million [Source: Apple]
+*   **Tesla:** $4,540 million [Source: Tesla]
+[PASS] (30.71s)
+--------------------------------------------------
+Running: Test C2 [Eng]: Gross Margin Analysis...
+--- RETRIEVING ---
+[WARN] Router parse error: {'message': 'The operation was aborted', 'code': 504}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+--- GENERATING ---
+A: Apple had a higher Total Gross Margin percentage in 2024.
+
+*   **Apple:** Approximately 46.2% (Gross margin of $180,683 million on total net sales of $391,035 million for the twelve months ended September 28, 2024) [Source: Apple].
+*   **Tesla:** 17.9% (Total gross margin for the year ended December...
+[PASS] (99.25s)
+--------------------------------------------------
+Running: Test D1 [Eng]: Apple Services Cost...
+--- RETRIEVING ---
+[WARN] Router parse error: {'message': 'The operation was aborted', 'code': 504}. Defaulting to 'both'.
+  -> Routing to: both
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: For the twelve months ended September 28, 2024, Apple's cost of sales for Services was $25,119 million [Source: Apple].
+[PASS] (18.20s)
+--------------------------------------------------
+Running: Test E1 [Mixed]: 2025 Projection (Trap)...
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+--- REWRITING QUERY ---
+  Rewritten: Does the 10-K or earnings report provide specific guidance or quantitative projections for iPhone unit sales volume for fiscal year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+--- REWRITING QUERY ---
+  Rewritten: Does the 10-K or earnings report disclose quantitative forward-looking guidance or specific projections for iPhone unit shipment volumes for fiscal year 2025?
+--- RETRIEVING ---
+  -> Routing to: apple
+--- GRADING ---
+  Relevance Grade: no
+  (Max retries reached, generating with available context)
+--- GENERATING ---
+A: The provided documents do not contain quantitative forward-looking guidance or specific projections for iPhone unit shipment volumes for fiscal year 2025. [Source: Apple]
+[PASS] (38.85s)
+--------------------------------------------------
+Running: Test F1 [Eng]: CEO Identity...
+--- RETRIEVING ---
+  -> Routing to: tesla
+--- GRADING ---
+  Relevance Grade: yes
+--- GENERATING ---
+A: Elon Musk signed the 10-K report as the Chief Executive Officer (Principal Executive Officer) for Tesla [Source: Tesla].
+[PASS] (5.91s)
+--------------------------------------------------
+
+FINAL SCORE: 14/14
