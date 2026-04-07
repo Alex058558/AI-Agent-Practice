@@ -8,11 +8,14 @@ AI Agent 開發實戰課程作業集。每個 assignment 為獨立的實作練�
 |---|------|------|------|
 | 1 | Financial Assistant | 使用 Raw Python + Function Calling 打造 CLI 財務助理 | [assignment-1](./assignment-1/) |
 | 2 | ReAct Agent | 從零實作 ReAct (Reasoning + Acting) Agent，具備 Reflection 與 Planning 能力 | [assignment-2](./assignment-2/) |
+| 3 | LangGraph RAG | 實作 RAG 系統比較 LangGraph 與 LangChain 架構，探索 Embedding Model 與 Chunk Size 對檢索品質的影響 | [assignment-3](./assignment-3/) |
 
 ## 技術棧
 
 - Python
-- OpenAI API (gpt-4o-mini) / OpenRouter
+- OpenAI API (gpt-4o-mini) / OpenRouter / Google Gemini
 - Function Calling / Tool Use
 - Tavily Search API
 - ReAct Pattern (Thought -> Action -> Observation)
+- LangGraph / LangChain
+- ChromaDB / HuggingFace Embeddings
