@@ -70,25 +70,25 @@ TEST_CASES = [
     {
         "name": "Test A: Apple Revenue",
         "question": "Apple 2024 \u5e74\u7684\u7e3d\u71df\u6536 (Total net sales) \u662f\u591a\u5c11\uff1f",
-        "must_contain": ["391", "billion"],
+        "must_contain": ["391,035", "391"],
         "forbidden": ["Tesla"],
     },
     {
         "name": "Test B: Tesla R&D",
         "question": "Tesla 2024 \u5e74\u7684\u7814\u767c\u8cbb\u7528 (R&D expenses) \u662f\u591a\u5c11\uff1f",
-        "must_contain": ["4.77", "billion"],
+        "must_contain": ["4.54", "4,540", "4540"],
         "forbidden": ["Apple"],
     },
     {
         "name": "Test D: Apple Services Cost",
         "question": "Apple 2024 \u5e74\u7684\u300c\u670d\u52d9\u6210\u672c (Cost of sales - Services)\u300d\u662f\u591a\u5c11\uff1f",
-        "must_contain": ["25", "billion", "25,119"],
+        "must_contain": ["25,119"],
         "forbidden": [],
     },
     {
         "name": "Test E: Tesla Energy Revenue",
         "question": "Tesla 2024 \u5e74\u7684\u300c\u80fd\u6e90\u767c\u96fb\u8207\u5132\u5b58 (Energy generation and storage)\u300d\u71df\u6536\u662f\u591a\u5c11\uff1f",
-        "must_contain": ["23.7", "billion", "23,767"],
+        "must_contain": ["10,086", "10.08", "10086"],
         "forbidden": [],
     },
     {
@@ -100,25 +100,25 @@ TEST_CASES = [
     {
         "name": "Test A1 [Eng]: Apple Revenue",
         "question": "What was Apple's Total Net Sales for the fiscal year 2024?",
-        "must_contain": ["391", "billion", "391,035"],
+        "must_contain": ["391,035", "391"],
         "forbidden": ["Tesla"],
     },
     {
         "name": "Test A2 [Eng]: Tesla Automotive Revenue",
         "question": "What is the specific revenue figure for 'Automotive sales' for Tesla in 2024?",
-        "must_contain": ["78", "billion", "78,512"],
+        "must_contain": ["72,480", "72.48", "72480"],
         "forbidden": ["Apple"],
     },
     {
         "name": "Test B1 [Mixed]: Apple R&D",
         "question": "Apple 2024 \u5e74\u7684\u7814\u767c\u8cbb\u7528 (Research and development expenses) \u662f\u591a\u5c11\uff1f",
-        "must_contain": ["31", "billion", "31,370"],
+        "must_contain": ["31,370", "31.37"],
         "forbidden": ["Tesla"],
     },
     {
         "name": "Test B2 [Mixed]: Tesla CapEx",
         "question": "Tesla \u5728 2024 \u5e74\u7684\u8cc7\u672c\u652f\u51fa (Capital Expenditures) \u662f\u591a\u5c11\uff1f",
-        "must_contain": ["11", "billion", "11,153"],
+        "must_contain": ["11,339", "11.34", "11339"],
         "forbidden": ["Apple"],
     },
     {
@@ -136,7 +136,7 @@ TEST_CASES = [
     {
         "name": "Test D1 [Eng]: Apple Services Cost",
         "question": "According to the Consolidated Statements of Operations, what was Apple's 'Cost of sales' specifically for 'Services' in 2024?",
-        "must_contain": ["25", "billion", "25,119"],
+        "must_contain": ["25,119"],
         "forbidden": [],
     },
     {
