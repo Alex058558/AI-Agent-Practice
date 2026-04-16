@@ -21,7 +21,7 @@ from llm_loader import load_local_llm, get_tokenizer, get_raw_pipeline
 # ========== 0) Initialization ==========
 load_dotenv()
 
-URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+URI = os.getenv("NEO4J_URI", "bolt://localhost:7688")
 AUTH = (
     os.getenv("NEO4J_USER", "neo4j"),
     os.getenv("NEO4J_PASSWORD", "password"),

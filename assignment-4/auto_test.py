@@ -30,7 +30,7 @@ def preflight_checks() -> bool:
         print(f"[X] Error: test data not found: {TEST_DATA_PATH}")
         return False
 
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7688")
     auth = (os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password"))
 
     try:

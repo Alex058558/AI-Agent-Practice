@@ -27,9 +27,4 @@ assignment-4/
 ## Quick Links
 
 - [詳細需求與規格](./docs/REQUIREMENTS.md)
-- [工作進度與待辦](./.workflow/PROGRESS.md)
-- [交接摘要](./.workflow/HANDOVER.md)
 
-## Report
-
-（以下將在實作完成後補上：KG Schema 設計、Cypher 查詢設計、截圖、失敗分析與改進）
