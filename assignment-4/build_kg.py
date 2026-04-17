@@ -57,8 +57,15 @@ def extract_entities(article_number: str, reg_name: str, content: str) -> dict[s
             "role": "user",
             "content": (
                 f'Extract rules from this article and output ONLY a JSON object in this exact format:\n'
-                f'{{"rules": [{{"type": "requirement|prohibition|penalty|condition|procedure", '
+                f'{{"rules": [{{"type": "requirement|prohibition|penalty|condition|procedure|numeric|exclusion", '
                 f'"action": "...", "result": "..."}}]}}\n\n'
+                f'IMPORTANT extraction guidelines:\n'
+                f'1. Extract ALL numeric requirements (e.g., "128 credits", "4 years", "60 marks", "3 working days")\n'
+                f'2. Extract rules about what IS and IS NOT counted (e.g., "Military Training is NOT included in graduation credits")\n'
+                f'3. Each numeric fact should be a separate rule with type "numeric"\n'
+                f'4. Exclusion rules should have type "exclusion"\n'
+                f'5. Use common synonyms in action/result (e.g., "forgetting ID" instead of "without student ID")\n'
+                f'6. For dismissal/expulsion conditions, extract the exact criteria\n\n'
                 f'Article {article_number} from {reg_name}:\n'
                 f'{content}\n\n'
                 f'JSON:'
@@ -90,6 +97,60 @@ def build_fallback_rules(article_number: str, content: str) -> list[dict[str, st
             "result": f"Refer to {article_number}",
         })
     return rules
+
+
+def extract_numeric_rules(article_number: str, content: str) -> list[dict[str, str]]:
+    """Deterministic extraction of numeric facts from article content."""
+    rules: list[dict[str, str]] = []
+
+    # Pattern for numbers with units
+    patterns = [
+        (r'(\d+)\s*(credits|credit)', 'credits'),
+        (r'(\d+)\s*(years|year)', 'years'),
+        (r'(\d+)\s*(marks|points|mark)', 'marks'),
+        (r'(\d+)\s*(semesters|semester)', 'semesters'),
+        (r'(\d+)\s*(working days|working day|days|day)', 'days'),
+        (r'(\d+)\s*(minutes|minute)', 'minutes'),
+    ]
+
+    for pattern, unit in patterns:
+        matches = re.findall(pattern, content.lower())
+        for match in matches:
+            number = match[0] if isinstance(match, tuple) else match
+            rules.append({
+                "type": "numeric",
+                "action": f"requires {number} {unit}",
+                "result": f"per {article_number}",
+            })
+
+    return rules
+
+
+# Synonym mapping for common terms
+SYNONYM_MAP = {
+    "without student id": "forgetting student ID",
+    "without their student id": "forgetting student ID",
+    "proctor": "invigilator",
+    "proctors": "invigilators",
+    "deducted": "penalty deduction",
+    "have five points deducted": "5 points penalty",
+}
+
+
+def apply_synonym_mapping(rule: dict[str, str]) -> dict[str, str]:
+    """Apply synonym mapping to rule action/result for better retrieval."""
+    action = rule.get("action") or ""
+    result = rule.get("result") or ""
+
+    for old, new in SYNONYM_MAP.items():
+        if old in action.lower():
+            action = action.replace(old, new)
+        if old in result.lower():
+            result = result.replace(old, new)
+
+    rule["action"] = action
+    rule["result"] = result
+    return rule
 
 
 # SQLite tables used:
@@ -172,7 +233,17 @@ def build_graph() -> None:
             if not rules:
                 rules = build_fallback_rules(article_number, content)
 
+            # Add numeric rules from deterministic extraction
+            numeric_rules = extract_numeric_rules(article_number, content)
+            for nr in numeric_rules:
+                nr_key = f"{nr.get('action', '').lower()}::{nr.get('result', '').lower()}"
+                if nr_key not in seen_rules:
+                    rules.append(nr)
+
             for rule in rules:
+                # Apply synonym mapping for better retrieval
+                rule = apply_synonym_mapping(rule)
+
                 action = (rule.get("action") or "").strip()
                 result = (rule.get("result") or "").strip()
                 if not action and not result:

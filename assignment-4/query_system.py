@@ -80,6 +80,9 @@ _STOP_WORDS = {
     "students", "they", "them",
 }
 
+# Short keywords whitelist - keep meaningful 2-letter words
+_SHORT_KEYWORDS = {"id", "pe", "ntd", "no", "yes"}
+
 
 def _classify_question(question: str) -> str:
     q_lower = question.lower().strip()
@@ -99,10 +102,17 @@ def _classify_question(question: str) -> str:
 def extract_entities(question: str) -> dict[str, Any]:
     """Parse question to {question_type, subject_terms, aspect}."""
     words = re.findall(r"[a-zA-Z0-9]+", question.lower())
-    subject_terms = [w for w in words if w not in _STOP_WORDS and len(w) > 2]
+    # Keep words: not in STOP_WORDS, len>=3 OR in SHORT_KEYWORDS whitelist
+    subject_terms = [
+        w for w in words
+        if w not in _STOP_WORDS and (len(w) >= 3 or w in _SHORT_KEYWORDS)
+    ]
     # Remove duplicates while preserving order
     seen = set()
     subject_terms = [w for w in subject_terms if not (w in seen or seen.add(w))]
+
+    # Limit to top 5 keywords to avoid score dilution
+    subject_terms = subject_terms[:5]
 
     question_type = _classify_question(question)
     aspect = "general"
@@ -116,12 +126,33 @@ def extract_entities(question: str) -> dict[str, Any]:
     }
 
 
-def build_typed_cypher(entities: dict[str, Any]) -> tuple[str, str]:
+def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[str, str]:
     """Return (typed_query, broad_query) with score and required fields."""
     terms = entities.get("subject_terms", [])
+    q_type = entities.get("question_type", "general")
+
+    # Inject domain keywords based on question context
+    domain_keywords = []
+    q_lower = question.lower()
+
+    # Exam-related questions: inject "exam" keyword
+    if q_type == "penalty" or "penalty" in q_lower or "exam" in q_lower:
+        domain_keywords.append("exam")
+
+    # Invigilator/proctor: inject both synonyms
+    if "invigilator" in q_lower or "proctor" in q_lower:
+        domain_keywords.append("proctor")
+
+    # Student ID related: ensure "id" is included
+    if "id" in q_lower and "id" not in terms:
+        domain_keywords.append("id")
+
+    # Combine terms with domain keywords (avoid duplicates)
+    all_terms = list(set(terms + domain_keywords))
+
     # Use OR for fulltext search; if no terms, fall back to wildcard
-    if terms:
-        query_text = " OR ".join(terms)
+    if all_terms:
+        query_text = " OR ".join(all_terms)
     else:
         query_text = "*"
 
@@ -150,7 +181,7 @@ def get_relevant_articles(question: str) -> list[dict[str, Any]]:
         return []
 
     entities = extract_entities(question)
-    cypher_typed, cypher_broad = build_typed_cypher(entities)
+    cypher_typed, cypher_broad = build_typed_cypher(entities, question)
 
     merged: dict[str, dict[str, Any]] = {}
 

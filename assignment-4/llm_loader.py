@@ -39,8 +39,14 @@ def load_local_llm(model_id: str = MODEL_ID) -> Any:
     if _llm_instance is not None:
         return _llm_instance
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype  = torch.float16 if torch.cuda.is_available() else torch.float32
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    dtype = torch.float16 if device != "cpu" else torch.float32
 
     os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
@@ -59,7 +65,7 @@ def load_local_llm(model_id: str = MODEL_ID) -> Any:
         "cache_dir": MODEL_CACHE_DIR,
         "torch_dtype": dtype,
     }
-    if torch.cuda.is_available():
+    if device in ("cuda", "mps"):
         model_kwargs["device_map"] = "auto"
 
     model = AutoModelForCausalLM.from_pretrained(model_id, **model_kwargs)
