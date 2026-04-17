@@ -127,7 +127,7 @@ def extract_entities(question: str) -> dict[str, Any]:
 
 
 def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[str, str]:
-    """Return (typed_query, broad_query) with score and required fields."""
+    """Return (typed_query, broad_query) with score boost for relevant Rule types."""
     terms = entities.get("subject_terms", [])
     q_type = entities.get("question_type", "general")
 
@@ -156,19 +156,52 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
     else:
         query_text = "*"
 
+    # Determine preferred Rule types based on question context
+    preferred_types = []
+    if q_type == "quantitative" or "how many" in q_lower or "how much" in q_lower:
+        preferred_types.append("numeric")
+    if "passing" in q_lower or "score" in q_lower or "marks" in q_lower:
+        preferred_types.extend(["numeric", "requirement"])
+    if q_type == "penalty" or "penalty" in q_lower:
+        preferred_types.append("penalty")
+    if "minutes" in q_lower or "late" in q_lower:
+        preferred_types.append("numeric")
+    if "semesters" in q_lower or "pe" in q_lower:
+        preferred_types.extend(["requirement", "numeric"])
+    if "dismissed" in q_lower or "expelled" in q_lower:
+        preferred_types.append("dismissal condition")
+
+    # Build type boost condition for Cypher
+    type_boost = ""
+    if preferred_types:
+        type_conditions = [f"node.type = '{t}'" for t in preferred_types]
+        type_boost = f"CASE WHEN ({' OR '.join(type_conditions)}) THEN score * 1.5 ELSE score END AS boosted_score"
+
     # Safe to embed because terms are regex-cleaned alphanumeric words
-    cypher_typed = (
-        "CALL db.index.fulltext.queryNodes('rule_idx', '" + query_text + "') YIELD node, score\n"
-        "RETURN node.rule_id AS rule_id, node.type AS type, node.action AS action,\n"
-        "       node.result AS result, node.art_ref AS art_ref, node.reg_name AS reg_name, score\n"
-        "LIMIT 10"
-    )
+    if type_boost:
+        cypher_typed = (
+            "CALL db.index.fulltext.queryNodes('rule_idx', '" + query_text + "') YIELD node, score\n"
+            "WITH node, " + type_boost + "\n"
+            "RETURN node.rule_id AS rule_id, node.type AS type, node.action AS action,\n"
+            "       node.result AS result, node.art_ref AS art_ref, node.reg_name AS reg_name, boosted_score AS score\n"
+            "ORDER BY score DESC\n"
+            "LIMIT 10"
+        )
+    else:
+        cypher_typed = (
+            "CALL db.index.fulltext.queryNodes('rule_idx', '" + query_text + "') YIELD node, score\n"
+            "RETURN node.rule_id AS rule_id, node.type AS type, node.action AS action,\n"
+            "       node.result AS result, node.art_ref AS art_ref, node.reg_name AS reg_name, score\n"
+            "ORDER BY score DESC\n"
+            "LIMIT 10"
+        )
 
     cypher_broad = (
         "CALL db.index.fulltext.queryNodes('article_content_idx', '" + query_text + "') YIELD node, score\n"
         "MATCH (node)-[:CONTAINS_RULE]->(r:Rule)\n"
         "RETURN r.rule_id AS rule_id, r.type AS type, r.action AS action,\n"
-        "       r.result AS result, r.art_ref AS art_ref, r.reg_name AS reg_name, score\n"
+        "       r.result AS result, r.art_ref AS art_ref, r.reg_name AS reg_name, score * 0.9 AS score\n"
+        "ORDER BY score DESC\n"
         "LIMIT 10"
     )
 
@@ -236,14 +269,29 @@ def generate_answer(question: str, rule_results: list[dict[str, Any]]) -> str:
         )
     context = "\n".join(context_lines)
 
+    # Detect question type for prompt customization
+    q_lower = question.lower()
+    is_quantitative = q_lower.startswith("how many") or q_lower.startswith("how much")
+    is_numeric_question = any(word in q_lower for word in ["credits", "years", "marks", "points", "days", "minutes", "semesters"])
+
+    system_prompt = (
+        "You are a university regulation assistant. "
+        "Answer the question concisely based ONLY on the provided rules. "
+        "Do not make up facts. If the rules do not contain the answer, say so."
+    )
+
+    # Add specific instructions for numeric/quantitative questions
+    if is_quantitative or is_numeric_question:
+        system_prompt += (
+            " For questions asking for specific numbers (credits, years, marks, days, etc.), "
+            "extract and state the exact numeric value directly from the rules. "
+            "Do not interpret or paraphrase the numbers."
+        )
+
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are a university regulation assistant. "
-                "Answer the question concisely based ONLY on the provided rules. "
-                "Do not make up facts. If the rules do not contain the answer, say so."
-            ),
+            "content": system_prompt,
         },
         {
             "role": "user",
