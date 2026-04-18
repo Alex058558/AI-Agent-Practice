@@ -24,46 +24,46 @@ load_dotenv()
 
 URI = os.getenv("NEO4J_URI", "bolt://localhost:7688")
 AUTH = (
-	os.getenv("NEO4J_USER", "neo4j"),
-	os.getenv("NEO4J_PASSWORD", "password"),
+    os.getenv("NEO4J_USER", "neo4j"),
+    os.getenv("NEO4J_PASSWORD", "password"),
 )
 
 # Avoid local proxy settings interfering with model/Neo4j access.
 for key in ["http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY"]:
-	if key in os.environ:
-		del os.environ[key]
+    if key in os.environ:
+        del os.environ[key]
 
 
 try:
-	driver = GraphDatabase.driver(URI, auth=AUTH)
-	driver.verify_connectivity()
+    driver = GraphDatabase.driver(URI, auth=AUTH)
+    driver.verify_connectivity()
 except Exception as e:
-	print(f"[WARN] Neo4j connection warning: {e}")
-	driver = None
+    print(f"[WARN] Neo4j connection warning: {e}")
+    driver = None
 
 
 # ========== 1) Public API (query flow order) ==========
 # Order: extract_entities -> build_typed_cypher -> get_relevant_articles -> generate_answer
 
 def generate_text(messages: list[dict[str, str]], max_new_tokens: int = 220) -> str:
-	"""
-	Call local HF model via chat template + raw pipeline.
+    """
+    Call local HF model via chat template + raw pipeline.
 
-	Interface:
-	- Input:
-	  - messages: list[dict[str, str]] (chat messages with role/content)
-	  - max_new_tokens: int
-	- Output:
-	  - str (model generated text, no JSON guarantee)
-	"""
-	tok = get_tokenizer()
-	pipe = get_raw_pipeline()
-	if tok is None or pipe is None:
-		load_local_llm()
-		tok = get_tokenizer()
-		pipe = get_raw_pipeline()
-	prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-	return pipe(prompt, max_new_tokens=max_new_tokens)[0]["generated_text"].strip()
+    Interface:
+    - Input:
+      - messages: list[dict[str, str]] (chat messages with role/content)
+      - max_new_tokens: int
+    - Output:
+      - str (model generated text, no JSON guarantee)
+    """
+    tok = get_tokenizer()
+    pipe = get_raw_pipeline()
+    if tok is None or pipe is None:
+        load_local_llm()
+        tok = get_tokenizer()
+        pipe = get_raw_pipeline()
+    prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    return pipe(prompt, max_new_tokens=max_new_tokens)[0]["generated_text"].strip()
 
 
 _STOP_WORDS = {
@@ -147,6 +147,14 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
     if "id" in q_lower and "id" not in terms:
         domain_keywords.append("id")
 
+    # Graduate/Master/PhD -> inject "postgraduate" (KG uses this term in Article content)
+    if "graduate" in q_lower or "master" in q_lower or "phd" in q_lower:
+        domain_keywords.append("postgraduate")
+
+    # Passing score questions: inject "marks" keyword
+    if "passing" in q_lower and "score" in q_lower:
+        domain_keywords.append("marks")
+
     # Combine terms with domain keywords (avoid duplicates)
     all_terms = list(set(terms + domain_keywords))
 
@@ -196,11 +204,13 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
             "LIMIT 10"
         )
 
+    # Broad search with full weight - Article content can contain context keywords
+    # that are not in Rule action/result fields (e.g., "postgraduate students")
     cypher_broad = (
         "CALL db.index.fulltext.queryNodes('article_content_idx', '" + query_text + "') YIELD node, score\n"
         "MATCH (node)-[:CONTAINS_RULE]->(r:Rule)\n"
         "RETURN r.rule_id AS rule_id, r.type AS type, r.action AS action,\n"
-        "       r.result AS result, r.art_ref AS art_ref, r.reg_name AS reg_name, score * 0.9 AS score\n"
+        "       r.result AS result, r.art_ref AS art_ref, r.reg_name AS reg_name, score AS score\n"
         "ORDER BY score DESC\n"
         "LIMIT 10"
     )
@@ -247,7 +257,7 @@ def get_relevant_articles(question: str) -> list[dict[str, Any]]:
                     "result": record["result"],
                     "art_ref": record["art_ref"],
                     "reg_name": record["reg_name"],
-                    "score": float(record["score"]) * 0.9,
+                    "score": float(record["score"]),
                     "source": "broad",
                 }
 
@@ -307,43 +317,42 @@ def generate_answer(question: str, rule_results: list[dict[str, Any]]) -> str:
 
 
 def main() -> None:
-	"""Interactive CLI (provided scaffold)."""
-	if driver is None:
-		return
+    """Interactive CLI (provided scaffold)."""
+    if driver is None:
+        return
 
-	load_local_llm()
+    load_local_llm()
 
-	print("=" * 50)
-	print("NCU Regulation Assistant (Template)")
-	print("=" * 50)
-	print("Try: 'What is the penalty for forgetting student ID?'")
-	print("Type 'exit' to quit.\n")
+    print("=" * 50)
+    print("NCU Regulation Assistant (Template)")
+    print("=" * 50)
+    print("Try: 'What is the penalty for forgetting student ID?'")
+    print("Type 'exit' to quit.\n")
 
-	while True:
-		try:
-			user_q = input("\nUser: ").strip()
-			if not user_q:
-				continue
-			if user_q.lower() in {"exit", "quit"}:
-				print("Bye!")
-				break
+    while True:
+        try:
+            user_q = input("\nUser: ").strip()
+            if not user_q:
+                continue
+            if user_q.lower() in {"exit", "quit"}:
+                print("Bye!")
+                break
 
-			results = get_relevant_articles(user_q)
-			answer = generate_answer(user_q, results)
-			print(f"Bot: {answer}")
+            results = get_relevant_articles(user_q)
+            answer = generate_answer(user_q, results)
+            print(f"Bot: {answer}")
 
-		except KeyboardInterrupt:
-			print("\nBye!")
-			break
-		except NotImplementedError as e:
-			print(f"[WARN] {e}")
-			break
-		except Exception as e:
-			print(f"[ERROR] {e}")
+        except KeyboardInterrupt:
+            print("\nBye!")
+            break
+        except NotImplementedError as e:
+            print(f"[WARN] {e}")
+            break
+        except Exception as e:
+            print(f"[ERROR] {e}")
 
-	driver.close()
+    driver.close()
 
 
 if __name__ == "__main__":
-	main()
-
+    main()
