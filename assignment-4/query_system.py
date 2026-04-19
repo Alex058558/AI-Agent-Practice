@@ -84,6 +84,62 @@ _STOP_WORDS = {
 _SHORT_KEYWORDS = {"id", "pe", "ntd", "no", "yes"}
 
 
+def _build_article_snippet(content: str, terms: list[str], max_chars: int = 220) -> str:
+    """Extract a short snippet from article content centered around matching terms."""
+    compact = re.sub(r"\s+", " ", content or "").strip()
+    if not compact:
+        return ""
+    lower = compact.lower()
+    hit_pos = [lower.find(t) for t in terms if t and lower.find(t) >= 0]
+    start = 0
+    if hit_pos:
+        start = max(0, min(hit_pos) - 60)
+    end = min(len(compact), start + max_chars)
+    snippet = compact[start:end]
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(compact):
+        snippet += "..."
+    return snippet
+
+
+def _attach_article_snippets(session: Any, candidates: list[dict[str, Any]], terms: list[str]) -> None:
+    """Batch-fetch article content and attach snippets to rule candidates."""
+    pairs: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for rule in candidates:
+        art_ref = str(rule.get("art_ref") or "")
+        reg_name = str(rule.get("reg_name") or "")
+        if not art_ref or not reg_name:
+            continue
+        key = (art_ref, reg_name)
+        if key in seen:
+            continue
+        seen.add(key)
+        pairs.append({"art_ref": art_ref, "reg_name": reg_name})
+    if not pairs:
+        return
+
+    rows = session.run(
+        """
+        UNWIND $pairs AS p
+        MATCH (a:Article {number: p.art_ref, reg_name: p.reg_name})
+        RETURN a.number AS art_ref, a.reg_name AS reg_name, a.content AS content
+        """,
+        pairs=pairs,
+    )
+    article_map: dict[tuple[str, str], str] = {}
+    for row in rows:
+        article_map[(str(row["art_ref"]), str(row["reg_name"]))] = str(row["content"] or "")
+
+    for rule in candidates:
+        key = (str(rule.get("art_ref") or ""), str(rule.get("reg_name") or ""))
+        content = article_map.get(key, "")
+        if content:
+            rule["article_snippet"] = _build_article_snippet(content, terms)
+
+
+
 def _classify_question(question: str) -> str:
     q_lower = question.lower().strip()
     if q_lower.startswith("how many") or q_lower.startswith("how much"):
@@ -152,8 +208,16 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
         domain_keywords.append("postgraduate")
 
     # Passing score questions: inject "marks" keyword
-    if "passing" in q_lower and "score" in q_lower:
+    if "passing" in q_lower and ("score" in q_lower or "grade" in q_lower):
         domain_keywords.append("marks")
+
+    # Make-up exam: inject "exam"
+    if "make-up exam" in q_lower:
+        domain_keywords.append("exam")
+
+    # Extension period: inject "extension"
+    if "extension" in q_lower:
+        domain_keywords.append("extension")
 
     # Combine terms with domain keywords (avoid duplicates)
     all_terms = list(set(terms + domain_keywords))
@@ -193,7 +257,7 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
             "RETURN node.rule_id AS rule_id, node.type AS type, node.action AS action,\n"
             "       node.result AS result, node.art_ref AS art_ref, node.reg_name AS reg_name, boosted_score AS score\n"
             "ORDER BY score DESC\n"
-            "LIMIT 10"
+            "LIMIT 25"
         )
     else:
         cypher_typed = (
@@ -201,7 +265,7 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
             "RETURN node.rule_id AS rule_id, node.type AS type, node.action AS action,\n"
             "       node.result AS result, node.art_ref AS art_ref, node.reg_name AS reg_name, score\n"
             "ORDER BY score DESC\n"
-            "LIMIT 10"
+            "LIMIT 25"
         )
 
     # Broad search with full weight - Article content can contain context keywords
@@ -212,7 +276,7 @@ def build_typed_cypher(entities: dict[str, Any], question: str = "") -> tuple[st
         "RETURN r.rule_id AS rule_id, r.type AS type, r.action AS action,\n"
         "       r.result AS result, r.art_ref AS art_ref, r.reg_name AS reg_name, score AS score\n"
         "ORDER BY score DESC\n"
-        "LIMIT 10"
+        "LIMIT 25"
     )
 
     return cypher_typed, cypher_broad
@@ -249,7 +313,11 @@ def get_relevant_articles(question: str) -> list[dict[str, Any]]:
         broad_results = session.run(cypher_broad)
         for record in broad_results:
             rid = record["rule_id"]
-            if rid not in merged:
+            if rid in merged:
+                # Boost rules found by both typed and broad search
+                merged[rid]["score"] += float(record["score"]) * 0.35
+                merged[rid]["source"] = "typed+broad"
+            else:
                 merged[rid] = {
                     "rule_id": rid,
                     "type": record["type"],
@@ -261,8 +329,8 @@ def get_relevant_articles(question: str) -> list[dict[str, Any]]:
                     "source": "broad",
                 }
 
-    # Sort by score desc
-    results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)
+        results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)
+        _attach_article_snippets(session, results[:12], entities.get("subject_terms", []))
     return results
 
 
@@ -273,10 +341,14 @@ def generate_answer(question: str, rule_results: list[dict[str, Any]]) -> str:
 
     context_lines = []
     for i, r in enumerate(rule_results[:5], 1):
-        context_lines.append(
+        line = (
             f"{i}. [{r.get('reg_name')} - {r.get('art_ref')}] "
             f"{r.get('action')} -> {r.get('result')}"
         )
+        snippet = str(r.get("article_snippet") or "").strip()
+        if snippet:
+            line += f"\n   Article snippet: {snippet}"
+        context_lines.append(line)
     context = "\n".join(context_lines)
 
     # Detect question type for prompt customization
@@ -286,16 +358,19 @@ def generate_answer(question: str, rule_results: list[dict[str, Any]]) -> str:
 
     system_prompt = (
         "You are a university regulation assistant. "
-        "Answer the question concisely based ONLY on the provided rules. "
-        "Do not make up facts. If the rules do not contain the answer, say so."
+        "Answer the question concisely in a complete, natural sentence based ONLY on the provided rules. "
+        "Do not make up facts. If the rules do not contain the answer, say 'Insufficient rule evidence to answer this question'.\n"
+        "Important Guidelines:\n"
+        "1. Read ALL the provided rules and their 'Article snippet' before making a conclusion.\n"
+        "2. The snippet often contains the exact answer (like numbers, scores, or time limits) which might be missing from the rule action/result.\n"
+        "3. If different rules give different numbers, carefully select the one whose snippet perfectly matches the specific student type (graduate/postgraduate vs undergraduate) or specific condition (lateness vs leaving)."
     )
 
     # Add specific instructions for numeric/quantitative questions
     if is_quantitative or is_numeric_question:
         system_prompt += (
-            " For questions asking for specific numbers (credits, years, marks, days, etc.), "
-            "extract and state the exact numeric value directly from the rules. "
-            "Do not interpret or paraphrase the numbers."
+            " For questions asking for specific numbers, carefully verify whether the number in the snippet corresponds precisely to the action asked about. "
+            "Extract the exact numeric value directly into your complete sentence."
         )
 
     messages = [

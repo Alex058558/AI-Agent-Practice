@@ -1,4 +1,4 @@
-﻿"""Minimal KG builder template for Assignment 4.
+"""Minimal KG builder template for Assignment 4.
 
 Keep this contract unchanged:
 - Graph: (Regulation)-[:HAS_ARTICLE]->(Article)-[:CONTAINS_RULE]->(Rule)
@@ -10,6 +10,7 @@ Keep this contract unchanged:
 
 import os
 import sqlite3
+import time
 from typing import Any
 
 from dotenv import load_dotenv
@@ -126,14 +127,10 @@ def extract_numeric_rules(article_number: str, content: str) -> list[dict[str, s
     return rules
 
 
-# Synonym mapping for common terms
+# Synonym mapping: only genuine lexical synonyms (e.g. US vs UK English)
 SYNONYM_MAP = {
-    "without student id": "forgetting student ID",
-    "without their student id": "forgetting student ID",
     "proctor": "invigilator",
     "proctors": "invigilators",
-    "deducted": "penalty deduction",
-    "have five points deducted": "5 points penalty",
 }
 
 
@@ -223,9 +220,20 @@ def build_graph() -> None:
         # 3) Extract rules from each article and create Rule nodes.
         cursor.execute("SELECT reg_id, article_number, content FROM articles")
         articles_for_rules = cursor.fetchall()
+        total_articles_for_rules = len(articles_for_rules)
+        started_at = time.time()
 
-        for reg_id, article_number, content in articles_for_rules:
+        for idx, (reg_id, article_number, content) in enumerate(articles_for_rules, start=1):
             reg_name, _ = reg_map.get(reg_id, ("Unknown", "Unknown"))
+
+            if idx == 1 or idx % 10 == 0 or idx == total_articles_for_rules:
+                elapsed = time.time() - started_at
+                print(
+                    f"[INFO] extracting article {idx}/{total_articles_for_rules}: "
+                    f"{reg_name} - {article_number} (elapsed: {elapsed:.1f}s)",
+                    flush=True,
+                )
+
             extracted = extract_entities(article_number, reg_name, content)
             rules = extracted.get("rules", [])
 
@@ -308,6 +316,7 @@ def build_graph() -> None:
             f"[Coverage] covered={covered_articles}/{total_articles}, "
             f"uncovered={uncovered_articles}"
         )
+        print(f"[INFO] total rules created: {rule_counter}", flush=True)
 
     driver.close()
     sql_conn.close()
