@@ -330,7 +330,7 @@ def get_relevant_articles(question: str) -> list[dict[str, Any]]:
                 }
 
         results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)
-        _attach_article_snippets(session, results[:12], entities.get("subject_terms", []))
+        _attach_article_snippets(session, results[:15], entities.get("subject_terms", []))
     return results
 
 
@@ -340,7 +340,7 @@ def generate_answer(question: str, rule_results: list[dict[str, Any]]) -> str:
         return "Insufficient rule evidence to answer this question."
 
     context_lines = []
-    for i, r in enumerate(rule_results[:5], 1):
+    for i, r in enumerate(rule_results[:10], 1):
         line = (
             f"{i}. [{r.get('reg_name')} - {r.get('art_ref')}] "
             f"{r.get('action')} -> {r.get('result')}"
