@@ -16,3 +16,9 @@ archive
 .mypy_cache/
 .claude/
 results/
+
+# docs
+docs/kg_iteration_guide.md
+
+# verify answer
+kg_diagnosis.py
