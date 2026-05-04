@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+.DS_Store
+ncu_regulations.db
+venv/
+hf_model_cache
+*.log
+.pytest_cache/
+.mypy_cache/
+.claude/
+.workflow/
+results/
+
+# Local-only experiment results
+auto_test_a5_results.json
