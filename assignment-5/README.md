@@ -113,6 +113,12 @@ python query_system_multiagent.py
 
 > 詳見 report.pdf
 
+## Challenges
+
+1. **LLM 結構化推理限制**：3B 模型難以理解 compound rule（如 "NTD 200 EasyCard; NTD 100 Mifare"），傾向取第一個數字而非根據 context 選擇（Q9）
+2. **KG Rule 拆分問題**：多條件規則被拆成獨立 nodes，result 為空的 node 被 LLM 視為補充說明而非主 rule，導致無法組合閱讀（Q18）
+3. **Lexical Search 先天限制**：字面匹配無法處理語意相近但用詞不同的查詢，需依賴同義詞表與 reranking 補足
+
 ## Key Findings
 
 1. **Multi-Agent 架構有效**：Security + Diagnosis + Repair 讓 unsafe/failure cases 全部通過
