@@ -10,7 +10,5 @@ hf_model_cache
 .mypy_cache/
 .claude/
 .workflow/
-results/
-
 # Local-only experiment results
 auto_test_a5_results.json
